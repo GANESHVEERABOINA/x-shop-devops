@@ -1,0 +1,14 @@
+appName: frontend
+replicaCount: 4
+
+image:
+  repository: ganeshveeraboina/x-shop-three-tire-app
+  tag: frontend-v5
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 80
+
+env:
+  backendUrl: "http://192.168.49.2:32296/api/"

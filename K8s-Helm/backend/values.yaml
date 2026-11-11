@@ -1,0 +1,11 @@
+appName: backend
+replicaCount: 4
+
+image:
+  repository: ganeshveeraboina/x-shop-three-tire-app
+  tag: backend-v5
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 4000

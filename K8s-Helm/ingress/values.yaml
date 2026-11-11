@@ -1,0 +1,7 @@
+ingressName: shop-ingress
+className: nginx
+
+services:
+  backend: backend-service
+  admin: admin-service
+  frontend: frontend-service
