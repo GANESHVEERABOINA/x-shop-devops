@@ -17,5 +17,4 @@ coverage/
 .DS_Store
 
 #k8s-sensitivefiles
-K8s-Helm/secrets.yml
 **/secrets.yml
