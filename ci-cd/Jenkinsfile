@@ -1,121 +1,108 @@
-pipeline{
-    agent k8s_master_node
-}
-stages{
-    stage("Clone Repository"){
-        steps{
-            git branch: 'main', url: 'https://github.com/GANESHVEERABOINA/x-shop-devops.git'
-            echo "repo clonned successfully"
-        }
-    }
-    stage("SonarQube Code Analysis"){
-        steps{
-            dir('backend') {
-                sh """
-                    sonar-scanner \
-                    -Dsonar.projectKey=x-shop \
-                    -Dsonar.projectName=x-shop \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
-                    -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                """  
-            }
-             dir('frontend') {
-                sh """
-                    sonar-scanner \
-                    -Dsonar.projectKey=x-shop \
-                    -Dsonar.projectName=x-shop \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
-                    -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                """  
-            }
-             dir('admin') {
-                sh """
-                    sonar-scanner \
-                    -Dsonar.projectKey=x-shop \
-                    -Dsonar.projectName=x-shop \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
-                    -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                """  
-            }
-
-        }
-    }
-    stage("Test&Build"){
-        steps{
-            dir('backend'){
-                sh 'npm ci'
-                sh 'npm test'
-                sh 'npm run build'
-            }
-            dir('frontend'){
-                sh 'npm ci'
-                sh 'npm test'
-                sh 'npm run build'
-            }
-            dir('admin'){
-                sh 'npm ci'
-                sh 'npm test'
-                sh 'npm run build'
+pipeline {
+    agent { label 'k8s_master_node' }
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main', url: 'https://github.com/GANESHVEERABOINA/x-shop-devops.git'
+                echo 'repo clonned successfully'
             }
         }
-    }
-    stage("Dockerize And Push to Hub"){
-        steps{
-             dir('backend'){
-                sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:backend-v6 -f Dockerfile . '
-                sh 'docker images'
+        stage('SonarQube Code Analysis') {
+            steps {
+                dir('backend') {
+                    sh '''
+                        sonar-scanner \
+                        -Dsonar.projectKey=x-shop \
+                        -Dsonar.projectName=x-shop \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
+                    '''
+                }
+                dir('frontend') {
+                    sh '''
+                        sonar-scanner \
+                        -Dsonar.projectKey=x-shop \
+                        -Dsonar.projectName=x-shop \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
+                    '''
+                }
+                dir('admin') {
+                    sh '''
+                        sonar-scanner \
+                        -Dsonar.projectKey=x-shop \
+                        -Dsonar.projectName=x-shop \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
+                    '''
+                }
             }
-            dir('frontend'){
-                sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:frontend-v6 -f Dockerfile . '
-                sh 'docker images'
+        }
+        stage('Test&Build') {
+            steps {
+                dir('backend') {
+                    sh 'npm ci'
+                    sh 'npm test'
+                    sh 'npm run build'
+                }
+                dir('frontend') {
+                    sh 'npm ci'
+                    sh 'npm test'
+                    sh 'npm run build'
+                }
+                dir('admin') {
+                    sh 'npm ci'
+                    sh 'npm test'
+                    sh 'npm run build'
+                }
             }
-            dir('admin'){
-                sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:admin-v6 -f Dockerfile . '
-                sh 'docker images'
-            }
-            withCredentials([usernamePassword(credentialsId: 'Docker_Login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+        }
+        stage('Dockerize And Push to Hub') {
+            steps {
+                dir('backend') {
+                    sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:backend-v6 -f Dockerfile . '
+                    sh 'docker images'
+                }
+                dir('frontend') {
+                    sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:frontend-v6 -f Dockerfile . '
+                    sh 'docker images'
+                }
+                dir('admin') {
+                    sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:admin-v6 -f Dockerfile . '
+                    sh 'docker images'
+                }
+                withCredentials([usernamePassword(credentialsId: 'Docker_Login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh """
                         echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
                         docker image push ganeshveeraboina/x-shop-three-tire-app:backend-v6
                         docker image push ganeshveeraboina/x-shop-three-tire-app:frontend-v6
                         docker image push ganeshveeraboina/x-shop-three-tire-app:admin-v6
                     """
-                    }
-                    echo "images pushed successfully"
+                }
+                echo 'images pushed successfully'
+            }
         }
-    }
-    stage("Deploy to K3s using Helm"){
-        steps{
-            dir('K8s-Helm/backend'){
-            sh 'helm upgrade --install backend-release /backend'
+        stage('Deploy to K3s using Helm') {
+            steps {
+                dir('K8s-Helm/backend') {
+                    sh 'helm upgrade --install backend-release /backend'
+                }
+                dir('K8s-Helm/frontend') {
+                    sh 'helm upgrade --install frontend-release /frontend'
+                }
+                dir('K8s-Helm/admin') {
+                    sh 'helm upgrade --install admin-release /admin'
+                }
+                dir('K8s-Helm/ingress') {
+                    sh 'helm upgrade --install ingress-release /ingress'
+                }
             }
-            dir('K8s-Helm/frontend'){
-            sh 'helm upgrade --install frontend-release /frontend'
-            }
-            dir('K8s-Helm/admin'){
-            sh 'helm upgrade --install admin-release /admin'
-            }
-            dir('K8s-Helm/ingress'){
-            sh 'helm upgrade --install ingress-release /ingress'
-            }
-
-            
-        }
-    }
-    stage(""){
-        steps{
-            
-        }
-    }
-    stage(""){
-        steps{
-            
         }
     }
 }
