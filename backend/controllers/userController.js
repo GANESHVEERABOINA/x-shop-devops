@@ -116,6 +116,12 @@ const toggleWishlist = async (req, res) => {
     try {
         const { userId, itemId } = req.body;
         const user = await userModel.findById(userId);
+        
+  
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+
         let wishlist = user.wishlist || [];
 
         if (wishlist.includes(itemId)) {
@@ -138,6 +144,12 @@ const getUserWishlist = async (req, res) => {
     try {
         const { userId } = req.body;
         const user = await userModel.findById(userId);
+        
+        // SAFE CHECK: యూజర్ లేకపోతే ఖాళీ అరే రిటర్న్ చేస్తుంది
+        if (!user) {
+            return res.json({ success: true, wishlist: [] });
+        }
+
         res.json({ success: true, wishlist: user.wishlist || [] });
     } catch (error) {
         console.log(error);
