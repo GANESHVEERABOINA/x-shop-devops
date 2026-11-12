@@ -1,0 +1,17 @@
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - ap-south-2
+
+filters:
+  instance-state-name: running
+
+keyed_groups:
+  - key: tags.Role
+    prefix: role
+    separator: "_"
+
+compose:
+  ansible_host: public_ip_address
+  ansible_user: "'ubuntu'"
+  ansible_ssh_private_key_file: "'/home/ganesh-veeraboina/agents-jenkins.pem'"

@@ -1,0 +1,63 @@
+---
+# PLAY 1: Setup K3s Master Node
+- name: Install and Configure K3s on Master Node
+  hosts: role_Master
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Install K3s Server with TLS-SAN and NoSchedule Taint
+      shell: |
+        curl -sfL https://get.k3s.io | sh -s - server \
+          --tls-san {{ ansible_host }} \
+          --node-taint CriticalAddonsOnly=true:NoSchedule \
+          --write-kubeconfig-mode 644
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for K3s node-token to be created
+      wait_for:
+        path: /var/lib/rancher/k3s/server/node-token
+        state: present
+        timeout: 60
+
+    - name: Read K3s Master Join Token
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_base64
+
+    - name: Save Master Private IP and Token on Master Node
+      set_fact:
+        master_private_ip: "{{ ansible_default_ipv4.address }}"
+        k3s_join_token: "{{ k3s_token_base64['content'] | b64decode | trim }}"
+
+    - name: Fetch Kubeconfig to Local Workstation
+      fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ./k3s-kubeconfig.yaml
+        flat: yes
+
+    - name: Update Kubeconfig with Master Public IP
+      delegate_to: localhost
+      become: false
+      replace:
+        path: ./k3s-kubeconfig.yaml
+        regexp: '127\.0\.0\.1'
+        replace: "{{ ansible_host }}"
+
+
+# PLAY 2: Join Worker Nodes to Master Cluster
+- name: Install K3s Agent on Worker Nodes and Join Cluster
+  hosts: role_Worker_1:role_Worker_2
+  become: true
+  gather_facts: true
+
+
+  tasks:
+    - name: Install K3s Agent and Connect to Master
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars[groups['role_Master'][0]]['master_private_ip'] }}:6443 \
+          K3S_TOKEN={{ hostvars[groups['role_Master'][0]]['k3s_join_token'] }} \
+          sh -s - agent
+      args:
+        creates: /usr/local/bin/k3s-agent

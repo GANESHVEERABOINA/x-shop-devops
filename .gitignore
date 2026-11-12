@@ -18,3 +18,7 @@ coverage/
 
 #k8s-sensitivefiles
 **/secrets.yml
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
