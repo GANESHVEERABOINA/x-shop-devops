@@ -1,4 +1,4 @@
-# 🛒 X-Shop: 3-Tier E-Commerce Platform — End-to-End DevSecOps Implementation
++# 🛒 X-Shop: 3-Tier E-Commerce Platform — End-to-End DevSecOps Implementation
 
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-K3s_Cluster-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
 ![Terraform](https://img.shields.io/badge/Terraform-AWS_IaC-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)
@@ -29,7 +29,7 @@ flowchart TB
         TF["Terraform CLI (IaC)"]
         ANS["Ansible Engine"]
         JNK["Jenkins CI/CD Pipeline"]
-        SEC["Security Suite: Gitleaks + SonarQube + Trivy"]
+        SEC["Security Suite: Gitleaks + SonarQube + Trivy + HashiCorp Vault"]
         HLM["Helm CLI + Kubeconfig"]
         
         JNK --> SEC --> HLM
@@ -44,21 +44,18 @@ flowchart TB
         subgraph K3sCluster["☸️ K3s High-Availability Kubernetes Cluster"]
             Master["🖥️ K3s Master Node (t3.small)\nControl Plane & API Server (:6443)\nTaint: NoSchedule"]
             
-            subgraph Worker1["⚙️ K3s Worker Node 1 (t3.medium - 10 Pods)"]
-                W1_FE["Frontend Pods (x4)"]
-                W1_BE["Backend Pods (x4)"]
-                W1_AD["Admin Pods (x2)"]
+            subgraph Worker1["⚙️ K3s Worker Node 1 "]
+                W1_FE["Frontend Pods "]
+                W1_BE["Backend Pods "]
+                W1_AD["Admin Pods "]
             end
 
-            subgraph Worker2["⚙️ K3s Worker Node 2 (t3.medium - 10 Pods)"]
-                W2_FE["Frontend Pods (x4)"]
-                W2_BE["Backend Pods (x4)"]
-                W2_AD["Admin Pods (x2)"]
+            subgraph Worker2["⚙️ K3s Worker Node 2 "]
+                W2_FE["Frontend Pods "]
+                W2_BE["Backend Pods "]
+                W2_AD["Admin Pods "]
             end
             
-            Master ==>|"Schedules 10 Pods"| Worker1
-            Master ==>|"Schedules 10 Pods"| Worker2
-        end
     end
 
     subgraph External["🌐 External Managed Cloud Services"]
@@ -82,10 +79,10 @@ To ensure high availability and zero-downtime traffic handling across both worke
 
 | Microservice | Tech Stack | Worker Node 1 | Worker Node 2 | Total Replicas (`values.yaml`) | Internal Port | Resource Limits (Per Pod) |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Frontend Store** | React 18, Vite, Nginx | 4 Pods | 4 Pods | **`8`** | `80` | `500m` CPU / `256Mi` RAM |
-| **Backend API** | Node.js, Express, Mongoose | 4 Pods | 4 Pods | **`8`** | `4000` | `500m` CPU / `256Mi` RAM |
-| **Admin Panel** | React 18, Tailwind, Nginx | 2 Pods | 2 Pods | **`4`** | `80` | `500m` CPU / `256Mi` RAM |
-| **Total Workload** | **3-Tier Architecture** | **10 Pods** | **10 Pods** | **`20 Pods`** | **Ingress Routed** | **~2.6 GB Total Cluster RAM** |
+| **Frontend Store** | React 18, Vite, Nginx | x Pods | x Pods | **`x`** | `80` | `500m` CPU / `256Mi` RAM |
+| **Backend API** | Node.js, Express, Mongoose | x Pods | x Pods | **`x`** | `4000` | `500m` CPU / `256Mi` RAM |
+| **Admin Panel** | React 18, Tailwind, Nginx | x Pods | x Pods | **`x`** | `80` | `500m` CPU / `256Mi` RAM |
+| **Total Workload** | **3-Tier Architecture** | **x Pods** | **x Pods** | **`x Pods`** | **Ingress Routed** | **~2.6 GB Total Cluster RAM** |
 
 ---
 
@@ -105,9 +102,8 @@ To ensure high availability and zero-downtime traffic handling across both worke
 
 ### 3. Cloud Infrastructure Provisioning with Terraform
 - Automated the creation of **3 Ubuntu 22.04 LTS EC2 Instances** on AWS:
-  - **1x K3s Master Node (`t3.small`):** Dedicated to running the K3s Control Plane, API Server, and Scheduler.
-  - **2x K3s Worker Nodes (`t3.medium`):** Dedicated to running application workloads (10 pods per node).
-- Configured AWS Security Groups to allow cluster communication, Flannel VXLAN overlay networking (`UDP 8472`), and Kubernetes API access (`TCP 6443`).
+  - **1x K3s Master Node (`x-type`):** Dedicated to running the K3s Control Plane, API Server, and Scheduler.
+  - **2x K3s Worker Nodes (`x-type`):** Dedicated to running application workloads (x pods per node).
 
 ### 4. Automated Cluster Configuration with Ansible
 - Built Ansible inventories and playbooks executed from the local control workstation over SSH (`.pem` key authentication).
@@ -118,7 +114,7 @@ To ensure high availability and zero-downtime traffic handling across both worke
 - **Stage 1 — Secret Detection (Gitleaks):** Scans the Git repository history and commits to prevent accidental credential leaks (`.gitleaksignore` & `.gitignore` enforced for `secrets.yml`).
 - **Stage 2 — Static Code Analysis (SonarQube):** Analyzes JavaScript/React/Node.js code quality, bugs, and security hotspots before building images.
 - **Stage 3 — Vulnerability Scanning (Trivy):** Scans IaC files (Helm charts, Dockerfiles) and built Docker images for Critical/High CVEs.
-- **Stage 4 — Build & Registry Push:** Builds versioned container images and pushes them to Docker Hub (`ganeshveeraboina/x-shop-three-tire-app`).
+**Stage 4 — Build & Registry Push:** Authenticates securely with Docker Hub using dynamic credentials retrieved from **HashiCorp Vault** via Jenkins Vault plugins, then builds versioned container images and pushes them to Docker Hub (`ganeshveeraboina/x-shop-three-tire-app`).
 - **Stage 5 — Automated Helm Deployment:** Connects to the AWS K3s Master Node API (`:6443`) using Jenkins secret `kubeconfig` and deploys all charts while injecting runtime secrets (`helm upgrade --install ... -f secrets.yml`).
 
 ---
@@ -161,25 +157,25 @@ x-shop-devops/
 # 1. Verify K3s Cluster Nodes (1 Master, 2 Workers)
 kubectl get nodes -o wide
 
-# 2. Deploy Backend with Secret Injection (8 Pods total -> 4 per Worker)
+# 2. Deploy Backend with Secret Injection (x Pods total -> x per Worker)
 helm upgrade --install backend-release ./K8s-Helm/backend -f ./K8s-Helm/backend/secrets.yml
 
-# 3. Deploy Frontend Storefront (8 Pods total -> 4 per Worker)
+# 3. Deploy Frontend Storefront (x Pods total -> x per Worker)
 helm upgrade --install frontend-release ./K8s-Helm/frontend
 
-# 4. Deploy Admin Dashboard (4 Pods total -> 2 per Worker)
+# 4. Deploy Admin Dashboard (x Pods total -> x per Worker)
 helm upgrade --install admin-release ./K8s-Helm/admin
 
 # 5. Deploy Ingress Routing Rules
 helm upgrade --install ingress-release ./K8s-Helm/ingress
 
-# 6. Verify 20 Pods Distributed Across Worker 1 & Worker 2
+# 6. Verify x Pods Distributed Across Worker 1 & Worker 2
 kubectl get pods -o wide
 ```
 
 ---
 
-## 👨‍💻 Author & DevSecOps Engineer
+## 👨‍💻 Author & DevOps & Cloud Engineer (Actively Learning & Implementing DevSecOps)
 
 **Ganesh Veeraboina**
-- **Focus Areas:** Cloud Infrastructure (AWS), Terraform, Ansible, Kubernetes (K3s/Minikube), Helm, CI/CD (Jenkins), DevSecOps (Gitleaks, SonarQube, Trivy).
+- Focus Areas: Cloud Infrastructure Automation (AWS, Terraform, Ansible), Kubernetes & K3s Orchestration, Helm, CI/CD Pipelines (Jenkins), Shift-Left Security, and Enterprise Secrets Management (HashiCorp Vault).
