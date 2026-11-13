@@ -111,7 +111,7 @@ pipeline {
                 stage('Docker - Backend') {
                     steps {
                         dir('backend') {
-                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:backend-${IMAGE_VERSION} -f Dockerfile ."
+                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:backend-${IMAGE_VERSION} --no-cache -f Dockerfile ."
                         }
                     }
                 }
@@ -119,7 +119,7 @@ pipeline {
                 stage('Docker - Frontend') {
                     steps {
                         dir('frontend') {
-                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:frontend-${IMAGE_VERSION} -f Dockerfile ."
+                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:frontend-${IMAGE_VERSION} --no-cache -f Dockerfile ."
                         }
                     }
                 }
@@ -127,7 +127,7 @@ pipeline {
                 stage('Docker - Admin') {
                     steps {
                         dir('admin') {
-                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:admin-${IMAGE_VERSION} -f Dockerfile ."
+                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:admin-${IMAGE_VERSION} --no-cache -f Dockerfile ."
                         }
                     }
                 }
