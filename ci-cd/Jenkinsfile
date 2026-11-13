@@ -31,43 +31,57 @@ pipeline {
         }
 
         stage('SonarQube Code Analysis') {
-            steps {
-                dir('backend') {
-                    sh """
-                        sonar-scanner \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY}-backend \
-                        -Dsonar.projectName=${SONAR_PROJECT_KEY}-backend \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=${SONAR_URL} \
-                        -Dsonar.login=${SONAR_TOKEN} \
-                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                    """
+            tools {
+                'sonar-scanner' 'sonar-scanner'
+            }
+            parallel {
+                stage('Sonar - Backend') {
+                    steps {
+                        dir('backend') {
+                            sh '''
+                                sonar-scanner \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY}-backend \
+                                -Dsonar.projectName=${SONAR_PROJECT_KEY}-backend \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=${SONAR_URL} \
+                                -Dsonar.login=${SONAR_TOKEN} \
+                                -Dsonar.exclusions=**/node_modules/**,**/dist/**
+                            '''
+                        }
+                    }
                 }
-                dir('frontend') {
-                    sh """
-                        sonar-scanner \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY}-frontend \
-                        -Dsonar.projectName=${SONAR_PROJECT_KEY}-frontend \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=${SONAR_URL} \
-                        -Dsonar.login=${SONAR_TOKEN} \
-                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                    """
+                stage('Sonar - Frontend') {
+                    steps {
+                        dir('frontend') {
+                            sh '''
+                                sonar-scanner \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY}-frontend \
+                                -Dsonar.projectName=${SONAR_PROJECT_KEY}-frontend \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=${SONAR_URL} \
+                                -Dsonar.login=${SONAR_TOKEN} \
+                                -Dsonar.exclusions=**/node_modules/**,**/dist/**
+                            '''
+                        }
+                    }
                 }
-                dir('admin') {
-                    sh """
-                        sonar-scanner \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY}-admin \
-                        -Dsonar.projectName=${SONAR_PROJECT_KEY}-admin \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=${SONAR_URL} \
-                        -Dsonar.login=${SONAR_TOKEN} \
-                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                    """
+                stage('Sonar - Admin') {
+                    steps {
+                        dir('admin') {
+                            sh '''
+                                sonar-scanner \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY}-admin \
+                                -Dsonar.projectName=${SONAR_PROJECT_KEY}-admin \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=${SONAR_URL} \
+                                -Dsonar.login=${SONAR_TOKEN} \
+                                -Dsonar.exclusions=**/node_modules/**,**/dist/**
+                            '''
+                        }
+                    }
                 }
             }
         }
-
         stage('Test & Build') {
             parallel{
                 stage('Test-Build-Backend'){
