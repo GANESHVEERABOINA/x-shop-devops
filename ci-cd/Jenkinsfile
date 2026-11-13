@@ -162,7 +162,7 @@ pipeline {
                 withCredentials([file(credentialsId: 'k8s_kube_config', variable: 'KUBECONFIG')]) {
                     dir('K8s-Helm') {
                         sh '''
-                            helm upgrade --install backend-release  ./backend ./backend/secrets.yml --wait --timeout 5m
+                            helm upgrade --install backend-release  ./backend -f ./backend/secrets.yml --wait --timeout 5m
                             helm upgrade --install frontend-release ./frontend --wait --timeout 5m
                             helm upgrade --install admin-release    ./admin    --wait --timeout 5m
                             helm upgrade --install ingress-release  ./ingress
