@@ -3,7 +3,7 @@ replicaCount: 4
 
 image:
   repository: ganeshveeraboina/x-shop-three-tire-app
-  tag: backend-v5
+  tag: backend-v6
 
 service:
   type: ClusterIP

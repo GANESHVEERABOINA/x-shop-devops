@@ -3,7 +3,7 @@ replicaCount: 4
 
 image:
   repository: ganeshveeraboina/x-shop-three-tire-app
-  tag: frontend-v5
+  tag: frontend-v6
 
 service:
   type: NodePort
@@ -11,4 +11,4 @@ service:
   targetPort: 80
 
 env:
-  backendUrl: "http://192.168.49.2:32296/api/"
+  backendUrl: "/api/"

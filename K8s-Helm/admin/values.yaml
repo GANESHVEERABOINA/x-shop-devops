@@ -3,7 +3,7 @@ replicaCount: 2
 
 image:
   repository: ganeshveeraboina/x-shop-three-tire-app
-  tag: admin-v5
+  tag: admin-v6
 
 service:
   type: NodePort
@@ -12,4 +12,4 @@ service:
   nodePort: 30003
 
 env:
-  backendUrl: "http://192.168.49.2:32296/api/"
+  backendUrl: "/api/"

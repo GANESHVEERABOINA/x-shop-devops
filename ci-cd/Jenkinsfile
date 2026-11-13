@@ -1,106 +1,149 @@
 pipeline {
-    agent { label 'k8s_master_node' }
+    agent any
+
+    environment {
+        // Git Details
+        GIT_URL           = 'https://github.com/GANESHVEERABOINA/x-shop-devops.git'
+        GIT_BRANCH        = 'main'
+        
+        // SonarQube Details
+        SONAR_URL         = 'http://localhost:9000'
+        SONAR_PROJECT_KEY = 'x-shop'
+        SONAR_TOKEN       = credentials('sonar_globle_token')
+
+
+        // Docker Image & Version Details
+        APP_NAME          = 'x-shop-three-tire-app'
+        IMAGE_VERSION     = 'v6'
+        
+        // Docker Hub Details
+        DOCKER_USERNAME   = 'ganeshveeraboina'
+        DOCKER_CREDS      = credentials('Docker_Login')
+        
+    }
+
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/GANESHVEERABOINA/x-shop-devops.git'
-                echo 'repo clonned successfully'
+                git branch: "${GIT_BRANCH}", url: "${GIT_URL}"
+                echo 'repo cloned successfully'
             }
         }
+
         stage('SonarQube Code Analysis') {
             steps {
                 dir('backend') {
-                    sh '''
-                        sonar-scanner \
-                        -Dsonar.projectKey=x-shop \
-                        -Dsonar.projectName=x-shop \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
-                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                    '''
-                }
-                dir('frontend') {
-                    sh '''
-                        sonar-scanner \
-                        -Dsonar.projectKey=x-shop \
-                        -Dsonar.projectName=x-shop \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
-                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                    '''
-                }
-                dir('admin') {
-                    sh '''
-                        sonar-scanner \
-                        -Dsonar.projectKey=x-shop \
-                        -Dsonar.projectName=x-shop \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.login=YOUR_SONARQUBE_TOKEN_OR_CREDENTIALS \
-                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
-                    '''
-                }
-            }
-        }
-        stage('Test&Build') {
-            steps {
-                dir('backend') {
-                    sh 'npm ci'
-                    sh 'npm test'
-                    sh 'npm run build'
-                }
-                dir('frontend') {
-                    sh 'npm ci'
-                    sh 'npm test'
-                    sh 'npm run build'
-                }
-                dir('admin') {
-                    sh 'npm ci'
-                    sh 'npm test'
-                    sh 'npm run build'
-                }
-            }
-        }
-        stage('Dockerize And Push to Hub') {
-            steps {
-                dir('backend') {
-                    sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:backend-v6 -f Dockerfile . '
-                    sh 'docker images'
-                }
-                dir('frontend') {
-                    sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:frontend-v6 -f Dockerfile . '
-                    sh 'docker images'
-                }
-                dir('admin') {
-                    sh 'docker image build -t ganeshveeraboina/x-shop-three-tire-app:admin-v6 -f Dockerfile . '
-                    sh 'docker images'
-                }
-                withCredentials([usernamePassword(credentialsId: 'Docker_Login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh """
-                        echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
-                        docker image push ganeshveeraboina/x-shop-three-tire-app:backend-v6
-                        docker image push ganeshveeraboina/x-shop-three-tire-app:frontend-v6
-                        docker image push ganeshveeraboina/x-shop-three-tire-app:admin-v6
+                        sonar-scanner \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY}-backend \
+                        -Dsonar.projectName=${SONAR_PROJECT_KEY}-backend \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${SONAR_URL} \
+                        -Dsonar.login=${SONAR_TOKEN} \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
                     """
                 }
-                echo 'images pushed successfully'
+                dir('frontend') {
+                    sh """
+                        sonar-scanner \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY}-frontend \
+                        -Dsonar.projectName=${SONAR_PROJECT_KEY}-frontend \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${SONAR_URL} \
+                        -Dsonar.login=${SONAR_TOKEN} \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
+                    """
+                }
+                dir('admin') {
+                    sh """
+                        sonar-scanner \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY}-admin \
+                        -Dsonar.projectName=${SONAR_PROJECT_KEY}-admin \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${SONAR_URL} \
+                        -Dsonar.login=${SONAR_TOKEN} \
+                        -Dsonar.exclusions=**/node_modules/**,**/dist/**
+                    """
+                }
             }
         }
-        stage('Deploy to K3s using Helm') {
+
+        stage('Test & Build') {
+            parallel{
+                stage('Test-Build-Backend'){
+                    steps{
+                        dir('backend'){
+                            sh ' npm ci && npm test && npm run build '
+                        }
+                    }
+                }
+                stage('Test-Build-frontend'){
+                    steps{
+                        dir('frontend'){
+                            sh ' npm ci && npm test && npm run build '
+                        }
+                    }
+                }
+                stage('Test-Build-admin'){
+                    steps{
+                        dir('admin'){
+                            sh ' npm ci && npm test && npm run build '
+                        }
+                    }
+                }
+            }
+        }
+        stage('Dockerize') {
+            parallel {
+                stage('Docker - Backend') {
+                    steps {
+                        dir('backend') {
+                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:backend-${IMAGE_VERSION} -f Dockerfile ."
+                        }
+                    }
+                }
+                stage('Docker - Frontend') {
+                    steps {
+                        dir('frontend') {
+                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:frontend-${IMAGE_VERSION} -f Dockerfile ."
+                        }
+                    }
+                }
+                stage('Docker - Admin') {
+                    steps {
+                        dir('admin') {
+                            sh "docker image build -t ${DOCKER_USERNAME}/${APP_NAME}:admin-${IMAGE_VERSION} -f Dockerfile ."
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
             steps {
-                dir('K8s-Helm/backend') {
-                    sh 'helm upgrade --install backend-release /backend'
-                }
-                dir('K8s-Helm/frontend') {
-                    sh 'helm upgrade --install frontend-release /frontend'
-                }
-                dir('K8s-Helm/admin') {
-                    sh 'helm upgrade --install admin-release /admin'
-                }
-                dir('K8s-Helm/ingress') {
-                    sh 'helm upgrade --install ingress-release /ingress'
+                sh 'echo "$DOCKER_CREDS_PSW" | docker login -u "$DOCKER_CREDS_USR" --password-stdin'
+                sh """
+                    docker image push ${DOCKER_USERNAME}/${APP_NAME}:backend-${IMAGE_VERSION}
+                    docker image push ${DOCKER_USERNAME}/${APP_NAME}:frontend-${IMAGE_VERSION}
+                    docker image push ${DOCKER_USERNAME}/${APP_NAME}:admin-${IMAGE_VERSION}
+                """
+                echo 'images pushed successfully'
+                sh "docker logout" 
+            }
+        }
+
+        stage('Deploy to K3s Using Helm') {
+            steps {
+                withCredentials([file(credentialsId: 'k8s_kube_config', variable: 'KUBECONFIG')]) {
+                    dir('K8s-Helm') {
+                        sh '''
+                            export KUBECONFIG=$KUBECONFIG
+                            helm upgrade --install backend-release ./backend
+                            helm upgrade --install frontend-release ./frontend
+                            helm upgrade --install admin-release ./admin
+                            helm upgrade --install ingress-release ./ingress
+                        '''
+                    }
                 }
             }
         }

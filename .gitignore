@@ -11,6 +11,7 @@ coverage/
 **/.env.*
 !.env.example
 !**/.env.example
+infra-configure/ansible/secrets.json
 
 # Local tool output
 .scannerwork/

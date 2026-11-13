@@ -15,12 +15,14 @@ spec:
       containers:
         - name: {{ .Values.appName }}-containers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: Always 
+          imagePullPolicy: Always
           ports:
             - containerPort: {{ .Values.service.targetPort }}
+          
           envFrom:
             - secretRef:
                 name: {{ .Values.appName }}-secret
+          
           resources:
             requests:
               cpu: 100m
