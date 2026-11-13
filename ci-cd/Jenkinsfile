@@ -83,7 +83,7 @@ pipeline {
                 stage('Test-Build-Backend') {
                     steps {
                         dir('backend') {
-                            sh 'npm ci'
+                            sh 'npm ci --legacy-peer-deps '
                         }
                     }
                 }
@@ -91,7 +91,7 @@ pipeline {
                 stage('Test-Build-Frontend') {
                     steps {
                         dir('frontend') {
-                            sh 'npm ci && npm run build'
+                            sh 'npm ci --legacy-peer-deps && npm run build'
                         }
                     }
                 }
@@ -99,7 +99,7 @@ pipeline {
                 stage('Test-Build-Admin') {
                     steps {
                         dir('admin') {
-                            sh 'npm ci && npm run build'
+                            sh 'npm ci --legacy-peer-deps && npm run build'
                         }
                     }
                 }
