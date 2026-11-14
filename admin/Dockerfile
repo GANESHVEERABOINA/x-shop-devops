@@ -12,6 +12,7 @@ FROM nginx
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist/ /usr/share/nginx/html/
+RUN ln -sfn /usr/share/nginx/html /usr/share/nginx/html/admin
 
 EXPOSE 80
 

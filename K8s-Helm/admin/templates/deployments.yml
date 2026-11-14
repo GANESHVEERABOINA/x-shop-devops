@@ -17,6 +17,13 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
             - containerPort: {{ .Values.service.targetPort }}
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - ln -sfn /usr/share/nginx/html /usr/share/nginx/html/admin
           env:
             - name: REACT_APP_BACKEND_URL
               value: {{ .Values.env.backendUrl | quote }}
