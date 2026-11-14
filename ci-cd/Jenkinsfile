@@ -166,6 +166,7 @@ pipeline {
                             helm upgrade --install frontend-release ./frontend --wait --timeout 5m
                             helm upgrade --install admin-release    ./admin    --wait --timeout 5m
                             helm upgrade --install ingress-release  ./ingress
+                            kubectl rollout restart deployment frontend backend admin
                         '''
                     }
                 }
