@@ -5,169 +5,210 @@
 ![Ansible](https://img.shields.io/badge/Ansible-Configuration-EE0000?style=for-the-badge&logo=ansible&logoColor=white)
 ![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD_Pipeline-D24939?style=for-the-badge&logo=jenkins&logoColor=white)
 ![Helm](https://img.shields.io/badge/Helm-Package_Manager-0F1689?style=for-the-badge&logo=helm&logoColor=white)
-![Security](https://img.shields.io/badge/DevSecOps-Gitleaks_|_SonarQube_|_Trivy_|_Vault-2EA44F?style=for-the-badge&logo=security&logoColor=white)
+![HashiCorp Vault](https://img.shields.io/badge/Vault-Secrets_Management-000000?style=for-the-badge&logo=vault&logoColor=white)
+![Security](https://img.shields.io/badge/DevSecOps-Gitleaks_|_SonarQube_|_Trivy_|_ESO-2EA44F?style=for-the-badge&logo=security&logoColor=white)
 
 ---
 
 ## 📌 Project Overview & Role Statement
 
-**X-Shop** is a full-stack, 3-tier e-commerce web application consisting of a **Customer Storefront (React/Vite)**, an **Admin Dashboard (React/Vite)**, and a **RESTful Backend API (Node.js/Express)** integrated with **MongoDB Atlas** and **Cloudinary**.
+**X-Shop** is a full-stack, 3-tier e-commerce web platform consisting of a **Customer Storefront (React/Vite)**, an **Admin Dashboard (React/Vite)**, and a **RESTful Backend API (Node.js/Express)** integrated with **MongoDB Atlas** and **Cloudinary**.
 
-> 💡 **Note on Application Development vs. DevSecOps Engineering:**
-> - **Web Development (AI-Generated):** The entire 3-tier full-stack application codebase (`frontend`, `admin`, and `backend`) was generated using **Artificial Intelligence (AI)**.
-> - **DevSecOps & Cloud Engineering (My Implementation):** My core focus and contribution to this project is taking this raw AI-generated application and engineering a **production-grade, automated, and secure DevSecOps lifecycle** around it—from containerization and Helm packaging to Infrastructure as Code (Terraform), Configuration Management (Ansible), Shift-Left Security (Gitleaks, SonarQube, Trivy), Enterprise Secrets Management (HashiCorp Vault), and High-Availability Kubernetes (K3s) orchestration on AWS.
+> 💡 **Application Development vs. DevSecOps Engineering Context:**
+> - **Web Application Layer:** The 3-tier application codebase (`frontend`, `admin`, and `backend`) was prototyped using modern full-stack web stacks.
+> - **DevSecOps & Cloud Engineering (My Core Contribution):** My primary engineering focus was architecting and delivering a **production-grade, zero-trust, automated DevSecOps lifecycle**:
+>   - **Infrastructure as Code (IaC):** Multi-node AWS EC2 provisioning via Terraform.
+>   - **Configuration Management:** Automated K3s cluster bootstrap, node joins, and Vault/ESO provisioning via Ansible.
+>   - **Enterprise Zero-Trust Secrets Management:** Native HashiCorp Vault deployment integrated with External Secrets Operator (ESO) — permanently removing plaintext secrets from Git repositories and Helm deployment values.
+>   - **Shift-Left Security:** Automated CI/CD scanning with SonarQube, Gitleaks, and Trivy image vulnerability assessment.
+>   - **Unified Ingress & Microservices Orchestration:** High-availability K3s orchestration with Traefik Ingress reverse proxying path-based traffic on standard HTTP Port 80 (`/`, `/admin`, `/api`).
 
 ---
 
-## 🏗️ System Architecture & Pod Distribution
-
-In this hybrid DevSecOps model, the **Local Linux Workstation** acts as the Master Control & CI/CD Node (running Terraform, Ansible, Jenkins, and security scanners), while **AWS Cloud** hosts the **K3s Kubernetes Cluster** (`1 Master + Worker Nodes`) running application workloads.
+## 🏗️ System Architecture & DevSecOps Lifecycle
 
 ```mermaid
 flowchart TB
-    subgraph Local["💻 Local Linux Workstation (DevSecOps Control & CI/CD Node)"]
-        TF["Terraform CLI (IaC)"]
-        ANS["Ansible Dynamic Inventory"]
-        JNK["Jenkins CI/CD Pipeline"]
-        VAULT["HashiCorp Vault Plugin"]
-        SEC["Security Suite: Gitleaks + SonarQube + Trivy"]
-        HLM["Helm CLI + Kubeconfig"]
-        
-        JNK --> VAULT --> SEC --> HLM
+    subgraph CI_CD["💻 DevSecOps Automation & CI/CD Pipeline (Jenkins)"]
+        SCM["GitHub SCM Trigger"]
+        SQ["SonarQube (Static Code Analysis)"]
+        BUILD["Test & Multi-Stage Docker Builds"]
+        TRIVY["Trivy (Vulnerability Scan)"]
+        DH["Docker Hub Registry (Versioned Tags)"]
+        HELM["Helm 3 Deployer"]
+
+        SCM --> SQ --> BUILD --> TRIVY --> DH --> HELM
     end
 
-    subgraph Registry["🐙 Source & Container Registry"]
-        GH["GitHub Repository"]
-        DH["Docker Hub Registry (ganeshveeraboina)"]
-    end
+    subgraph AWS["☁️ AWS Cloud Infrastructure (K3s Kubernetes Cluster)"]
+        subgraph MasterNode["🖥️ K3s Control Plane (Master Node)"]
+            K8sAPI["K3s API Server (:6443)"]
+            Taint["Taint: CriticalAddonsOnly=true:NoSchedule"]
+            Vault["🔒 HashiCorp Vault (v1.14+)"]
+            ESO["🔑 External Secrets Operator (ESO)"]
+        end
 
-    subgraph AWS["☁️ AWS Cloud Infrastructure"]
-        subgraph K3sCluster["☸️ K3s High-Availability Kubernetes Cluster"]
-            Master["🖥️ K3s Master Node\nControl Plane & API Server (:6443)\nTaint: NoSchedule"]
+        subgraph WorkerNodes["⚙️ K3s Worker Nodes (2x EC2 Nodes)"]
+            Traefik["🌐 Traefik Ingress Controller (:80)"]
             
-            subgraph Workers["⚙️ K3s Worker Nodes (Autoscaled)"]
-                W_FE["Frontend Pods"]
-                W_BE["Backend Pods"]
-                W_AD["Admin Pods"]
+            subgraph Workloads["Scalable Workloads (20 Pods Total)"]
+                FE["8x Frontend Pods (Customer Storefront)"]
+                BE["8x Backend Pods (Node.js/Express API)"]
+                AD["4x Admin Pods (Admin Management Panel)"]
             end
             
-            Master ==>|"Schedules Workloads"| Workers
+            K8sSec["Kubernetes Secret (backend-secret)"]
         end
+
+        K8sAPI --> Traefik
+        Vault -.->|"Syncs KV-v2 Secrets"| ESO
+        ESO -->|"Generates at Runtime"| K8sSec
+        K8sSec -->|"envFrom Injected"| BE
     end
 
-    subgraph External["🌐 External Managed Cloud Services"]
-        MONGO[("MongoDB Atlas (xshop DB)")]
-        CLD[("Cloudinary Media API")]
+    subgraph External["🌐 External Cloud Services"]
+        MONGO[("MongoDB Atlas Database")]
+        CLOUDINARY[("Cloudinary Media CDN")]
     end
 
-    TF -->|"1. Provisions Infrastructure & SG"| AWS
-    ANS -->|"2. Dynamic Inventory Discovery & K3s Setup"| K3sCluster
-    GH -->|"3. Webhook Trigger"| JNK
-    SEC -->|"4. Pushes Verified Images"| DH
-    HLM -->|"5. Deploys Charts (-f secrets.yml)"| Master
-    DH -.->|"Pulls Container Images"| Workers
-    W_BE -->|"Database R/W"| MONGO
-    W_BE -->|"Product Image Uploads"| CLD
+    HELM -->|"Deploys Charts via Kubeconfig"| K8sAPI
+    BE -->|"Database Queries"| MONGO
+    BE -->|"Media Uploads & CDN"| CLOUDINARY
+    Traefik -->|"Path /"| FE
+    Traefik -->|"Path /admin"| AD
+    Traefik -->|"Path /api"| BE
 ```
 
 ---
 
-## ✅ Present Implementation (Current DevSecOps Workflow)
+## 🔒 Enterprise Secrets Management: HashiCorp Vault & External Secrets Operator (ESO)
 
-### 1. Containerization & Local Kubernetes Validation (Minikube)
-- Wrote multi-stage, production-ready `Dockerfile` configurations for `frontend`, `admin` (served via custom Nginx configurations), and `backend`.
-- Tested the complete 3-tier routing locally on **Minikube** with Nginx Ingress Controller:
-  - `/` $\rightarrow$ `frontend-service:80`
-  - `/admin` $\rightarrow$ `admin-service:80`
-  - `/api` $\rightarrow$ `backend-service:4000`
-- Resolved container-level IPv6 DNS resolution bottlenecks with external APIs (Cloudinary) using Node.js runtime flags (`--dns-result-order=ipv4first`).
+To achieve strict **Zero-Trust Security** and prevent credential leakage in source control:
 
-### 2. Modular Kubernetes Packaging with Helm (`K8s-Helm/`)
-- Created dedicated Helm charts for **Frontend**, **Backend**, **Admin**, and **Ingress**.
-- Designed dynamic Kubernetes `Secret` templates (`{{ .Values.appName }}-secret`) injected into pods via `envFrom.secretRef` so sensitive credentials (`MONGODB_URI`, `JWT_SECRET`, `CLOUDINARY_SECRET_KEY`, `ADMIN_PASSWORD`) are never hardcoded in deployment manifests.
-
-### 3. Cloud Infrastructure Provisioning with Terraform
-- Automated the creation of Ubuntu Linux EC2 Instances on AWS:
-  - **1x K3s Master Node:** Dedicated to running the K3s Control Plane, API Server, and Scheduler.
-  - **K3s Worker Nodes:** Dedicated to running scalable application workloads.
-- Configured AWS Security Groups to allow cluster communication, Flannel VXLAN overlay networking (`UDP 8472`), and Kubernetes API access (`TCP 6443`).
-
-### 4. Automated Cluster Configuration with Ansible & Dynamic Inventory
-- Implemented **Ansible Dynamic Inventory plugins** to automatically discover newly provisioned EC2 instances in real time.
-- Built playbooks executed from the local control workstation over SSH (`.pem` key authentication).
-- Automated the installation of **K3s Master** (with `--tls-san` for external Kubeconfig access) and automated token extraction to join worker nodes seamlessly.
-- Applied `NoSchedule` taints on the Master Node so application pods schedule strictly across worker nodes.
-
-### 5. Shift-Left DevSecOps CI/CD Pipeline (Jenkins & HashiCorp Vault)
-- **Stage 1 — Secret Detection (Gitleaks):** Scans the Git repository history and commits to prevent accidental credential leaks (`.gitleaksignore` & `.gitignore` enforced for `secrets.yml`).
-- **Stage 2 — Static Code Analysis (SonarQube):** Analyzes JavaScript/React/Node.js code quality, bugs, and security hotspots before building images.
-- **Stage 3 — Vulnerability Scanning (Trivy):** Scans IaC files (Helm charts, Dockerfiles) and built Docker images for Critical/High CVEs.
-- **Stage 4 — Build & Registry Push:** Authenticates securely with Docker Hub using dynamic credentials retrieved from **HashiCorp Vault** via Jenkins Vault plugins, then builds versioned container images and pushes them to Docker Hub (`ganeshveeraboina/x-shop-three-tire-app`).
-- **Stage 5 — Automated Helm Deployment:** Connects to the AWS K3s Master Node API (`:6443`) using Jenkins secret `kubeconfig` and deploys all charts while injecting runtime secrets (`helm upgrade --install ... -f secrets.yml`).
+1. **HashiCorp Vault Deployment:**
+   - Installed inside the K3s cluster under the dedicated `vault` namespace.
+   - Configured with tolerations to safely run alongside the master control plane without compromising worker compute capacity.
+2. **External Secrets Operator (ESO):**
+   - Deployed with custom CRDs (`SecretStore` and `ExternalSecret` on `apiVersion: external-secrets.io/v1`).
+   - Watches Vault KV-v2 path `secret/data/x-shop/backend` and automatically reconciles secrets into the native Kubernetes Secret `backend-secret`.
+3. **Zero Plaintext Secrets in Git:**
+   - Completely eradicated `secrets.yml` files.
+   - Historical Git commits purged permanently using `git-filter-repo`.
+   - Comprehensive `.gitignore` and `.gitleaksignore` rules preventing future accidental commits.
+4. **All 11 Production Secrets Managed via Vault:**
+   - `PORT`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `MONGODB_URI`
+   - `CLOUDINARY_API_KEY`, `CLOUDINARY_SECRET_KEY`, `CLOUDINARY_NAME`
+   - `STRIPE_SECRET_KEY`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`
 
 ---
 
-## 🚀 Future Implementation Roadmap (Phase 2 Enhancements)
+## 🌐 Unified Ingress & Single-Port Access Architecture
 
-To evolve this architecture into an enterprise-grade cloud environment, the following infrastructure and security upgrades are planned:
+Rather than opening scattered NodePorts (such as `30003`) across EC2 security groups, the application is fronted by **Traefik Ingress** on standard HTTP **Port 80**:
 
-- [ ] **Custom AWS VPC & Network Isolation:** Replace default networking with a custom VPC featuring **Public Subnets** (for Bastion Host & Load Balancers) and **Private Subnets** (for K3s Master & Worker nodes) with NAT Gateways.
-- [ ] **Strict Security Group Hardening:** Transition from open testing ports (`All TCP`) to least-privilege firewall rules—allowing only ports `80/443` publicly, restricting `6443` to the CI/CD IP, and limiting internal node traffic strictly to VPC CIDR blocks.
-- [ ] **AWS Application Load Balancer (ALB) & SSL/TLS:** Integrate an external AWS Load Balancer with **Cert-Manager** and **Let's Encrypt** (or AWS ACM) to enforce HTTPS (`SSL/TLS`) termination across the storefront and admin panel.
-- [ ] **Horizontal Pod Autoscaler (HPA) & Cluster Autoscaling:** Configure Kubernetes Metrics Server and HPA to dynamically scale workloads based on real-time CPU/Memory spikes.
-- [ ] **Observability & Monitoring Stack:** Deploy **Prometheus** and **Grafana** via Helm to monitor K3s node health, pod resource consumption, and API latency in real time.
-- [ ] **GitOps Continuous Delivery with ArgoCD:** Decouple deployment from Jenkins by introducing **ArgoCD** inside the K3s cluster to automatically sync Helm chart states directly from GitHub.
+| Route | Destination Service | Description | Port | Status |
+| :--- | :--- | :--- | :---: | :---: |
+| `http://<Node_IP>/` | `frontend-service:80` | Customer-facing React Storefront | **80** | `200 OK` |
+| `http://<Node_IP>/admin` | `admin-service:80` | Store Administration Dashboard | **80** | `200 OK` |
+| `http://<Node_IP>/api` | `backend-service:80` | REST API Endpoints | **80** | `200 OK` |
+
+### Key Ingress & Microservice Routing Fixes:
+1. **IngressClass Alignment:** Configured `ingressClassName: traefik` in Helm templates to natively bind to K3s's built-in Traefik load balancer.
+2. **Admin SPA Subpath Routing:** Resolved Vite base path `/admin/` asset lookup loops by introducing an internal Nginx symlink (`/usr/share/nginx/html/admin`) and a Kubernetes `postStart` lifecycle hook, preventing internal 500 redirection cycles.
+3. **Dynamic Client Reverse-Proxying:** Updated `backendUrl` in both `frontend` and `admin` to relative paths (`""`), seamlessly proxying API requests through Port 80 without firewall barriers or CORS conflicts.
 
 ---
 
-## 📂 Repository Directory Structure
+## 🛠️ Infrastructure & DevSecOps Toolchain
+
+| Category | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Cloud Provider** | AWS (Amazon Web Services) | 3x EC2 Ubuntu Nodes (`1 Master + 2 Workers`) |
+| **Infrastructure as Code** | Terraform (`>= 1.5`) | Declarative provisioning of EC2 instances and Security Groups |
+| **Configuration Management**| Ansible | Dynamic AWS inventory discovery, cluster setup, Vault/ESO automation |
+| **Container Orchestration** | K3s (Lightweight Kubernetes) | Multi-node cluster with Flannel CNI and Traefik Ingress |
+| **Package Management** | Helm 3 | Templated charts for `frontend`, `backend`, `admin`, and `ingress` |
+| **CI/CD Automation** | Jenkins Declarative Pipeline | End-to-end automated build, test, scan, and deploy pipeline |
+| **Code Quality & Security** | SonarQube | Static Application Security Testing (SAST) & code smell detection |
+| **Vulnerability Scanning** | Trivy & Gitleaks | Container image CVE scans and repository secret scanning |
+| **Secrets Management** | HashiCorp Vault + ESO | Dynamic, out-of-band secret injection without disk persistence |
+| **Database & Media Storage** | MongoDB Atlas & Cloudinary | Fully managed cloud NoSQL database and media asset CDN |
+
+---
+
+## 📂 Repository Structure
 
 ```text
-x-shop-devops/
-├── admin/                        # AI-Generated React Admin Panel + Dockerfile & Nginx Config
-├── backend/                      # AI-Generated Node.js/Express API + Dockerfile
-├── frontend/                     # AI-Generated React Customer Storefront + Dockerfile & Nginx Config
-├── K8s-Helm/                     # Production Helm Charts for Kubernetes Deployment
-│   ├── admin/                    # Admin Deployment, Service & Values
-│   ├── backend/                  # Backend Deployment, Service, Secret Templates & Values
-│   ├── frontend/                 # Frontend Deployment, Service & Values
-│   └── ingress/                  # Path-based Nginx Ingress Routing Rules (/, /admin, /api)
-├── infra-configure/              # Terraform IaC and Ansible Playbooks/Dynamic Inventory
-├── .gitignore                    # Excludes node_modules, dist, .env, and plain-text secrets.yml
-├── .gitleaksignore               # Baseline exclusions for Gitleaks secret scanner
-└── README.md                     # Project Documentation & DevSecOps Architecture
+x-shop/
+├── admin/                                  # React Admin Panel (Vite + TailwindCSS)
+│   ├── Dockerfile                          # Multi-stage production build with Nginx
+│   └── nginx.conf                          # Custom SPA routing configuration
+├── backend/                                # Node.js / Express REST API
+│   ├── config/                             # MongoDB & Cloudinary connectors
+│   ├── controllers/                        # Business logic (User, Product, Cart, Order)
+│   └── Dockerfile                          # Node.js production image
+├── frontend/                               # React Customer Storefront (Vite + TailwindCSS)
+│   ├── Dockerfile                          # Production Nginx container configuration
+│   └── nginx.conf                          # SPA fallback configuration
+├── K8s-Helm/                               # Production Helm Charts
+│   ├── admin/                              # Admin Deployment (4 replicas) & Service
+│   ├── backend/                            # Backend Deployment (8 replicas) & Service
+│   │   └── templates/eso-secrets.yaml      # External Secrets Operator (SecretStore + ExternalSecret)
+│   ├── frontend/                           # Frontend Deployment (8 replicas) & Service
+│   └── ingress/                            # Traefik Ingress routing rules (/, /admin, /api)
+├── infra-configure/
+│   ├── terraform/                          # Terraform IaC files (main.tf, variables, security groups)
+│   └── ansible/                            # Ansible setup playbooks & dynamic AWS EC2 inventory
+│       └── playbooks/setup_vault_eso.yml   # Automated Vault & ESO deployment playbook
+├── Jenkinsfile                             # Multi-stage DevSecOps Declarative Pipeline
+├── .gitignore                              # Strict exclusions for secrets, node_modules, kubeconfigs
+└── README.md                               # Project Architecture & Operations Documentation
 ```
 
 ---
 
-## ⚡ Quick Start & Deployment Guide
+## 🚀 Deployment & Operations Guide
 
+### Step 1: Provision Cloud Infrastructure with Terraform
 ```bash
-# 1. Initialize and provision cloud infrastructure via Terraform
 cd infra-configure/terraform
-terraform init && terraform apply --auto-approve
+terraform init
+terraform plan
+terraform apply --auto-approve
+```
 
-# 2. Run Ansible playbooks using dynamic inventory for K3s cluster setup
+### Step 2: Configure K3s Cluster & Bootstrap Vault via Ansible
+```bash
 cd ../ansible
-ansible-playbook -i dynamic_inventory.aws_ec2.yml setup-cluster.yml
+# 1. Install K3s Control Plane and join Worker nodes
+ansible-playbook -i dynamic_inventory.aws_ec2.yml playbooks/setup-cluster.yml
 
-# 3. Verify cluster health and active worker nodes
+# 2. Deploy HashiCorp Vault, External Secrets Operator, and inject application secrets
+ansible-playbook -i dynamic_inventory.aws_ec2.yml playbooks/setup_vault_eso.yml
+```
+
+### Step 3: Verify Cluster & Workload Health
+```bash
+# Verify all nodes are Ready
 kubectl get nodes -o wide
 
-# 4. Deploy microservices using Helm charts with secure secret mapping
-helm upgrade --install backend-release ./K8s-Helm/backend -f ./K8s-Helm/backend/secrets.yml
-helm upgrade --install frontend-release ./K8s-Helm/frontend
-helm upgrade --install admin-release ./K8s-Helm/admin
-helm upgrade --install ingress-release ./K8s-Helm/ingress
+# Verify ExternalSecret synchronization
+kubectl get externalsecrets,secretstore -A
 
-# 5. Check live pod distribution across worker nodes
+# Check all application pods across worker nodes (20 pods)
 kubectl get pods -o wide
 ```
+
+### Step 4: Access the Live Application (Standard Port 80)
+Open any node's public IP address directly in your web browser:
+- 🛍️ **Storefront:** `http://<PUBLIC_IP>/`
+- ⚙️ **Admin Panel:** `http://<PUBLIC_IP>/admin`
+- 🔌 **API Health:** `http://<PUBLIC_IP>/api/product/list`
 
 ---
 
 ## 👨‍💻 Author & DevSecOps Practitioner
 
 **Ganesh Veeraboina**
-- **Role:** DevOps & Cloud Engineer (Actively Learning & Implementing DevSecOps)
-- **Focus Areas:** Cloud Infrastructure Automation (AWS, Terraform, Ansible), Kubernetes & K3s Orchestration, Helm, CI/CD Pipelines (Jenkins), Shift-Left Security, and Enterprise Secrets Management (HashiCorp Vault).
+- **Role:** DevOps & Cloud Security Engineer
+- **Core Competencies:** Cloud Infrastructure Automation (AWS, Terraform, Ansible), Kubernetes/K3s Architecture, Helm Packaging, Jenkins CI/CD Pipelines, Shift-Left Security (SonarQube, Trivy, Gitleaks), and Zero-Trust Secrets Management (HashiCorp Vault & ESO).
