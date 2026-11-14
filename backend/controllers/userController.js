@@ -73,7 +73,7 @@ const getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
         if (!userId) {
-            return res.json({ success: false, message: "Unauthorized user ID" });
+            return res.json({ success: false, message: "Not Authorized Login Again" });
         }
         const userData = await userModel.findById(userId).select('-password');
         if (!userData) {

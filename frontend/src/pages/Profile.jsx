@@ -24,8 +24,12 @@ const Profile = () => {
       if (response.data.success) {
         setUserData(response.data.userData);
       } else {
-        toast.error("Backend Error: " + response.data.message);
-        console.log("Backend Response Error:", response.data);
+        toast.error(response.data.message);
+        if (response.data.message === "Not Authorized Login Again" || response.data.message === "Invalid Token" || response.data.message === "Unauthorized user ID") {
+          localStorage.removeItem('token');
+          navigate('/login');
+          return;
+        }
         setUserData({ name: "Error", addresses: [] }); // Stop infinite loading
       }
     } catch (error) {
