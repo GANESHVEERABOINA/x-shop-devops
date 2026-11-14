@@ -81,13 +81,7 @@
           cat /tmp/secrets.json | kubectl exec -i -n vault vault-0 -- sh -c 'cat > /tmp/s.json && vault kv put secret/x-shop/backend @/tmp/s.json && rm -f /tmp/s.json'
           rm -f /tmp/secrets.json
         else
-          # Initialize default secret path if secrets.json was not provided
-          kubectl exec -n vault vault-0 -- vault kv put secret/x-shop/backend \
-            PORT="4000" \
-            JWT_SECRET="your_jwt_secret_key" \
-            ADMIN_EMAIL="admin@xshop.com" \
-            ADMIN_PASSWORD="your_secure_admin_password" \
-            MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.mongodb.net/?appName=xshop"
+          echo "secrets.json was not found. Please inject secrets using: vault kv put secret/x-shop/backend @secrets.json"
         fi
       changed_when: true
 
