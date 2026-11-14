@@ -9,8 +9,13 @@ const ShopContextProvider = (props) => {
     const currency = '₹';
     const delivery_fee = 10;
     
-    // PERMANENT FIX: Automatically detects Localhost or Network IP (Mobile friendly)
-    const backendUrl = `http://${window.location.hostname}:4000`;
+    // In production with Ingress/reverse-proxy, use relative path ("")
+    // In local dev server (port 5173), fallback to http://localhost:4000
+    const backendUrl = import.meta.env.VITE_BACKEND_URL !== undefined 
+        ? import.meta.env.VITE_BACKEND_URL 
+        : (window.location.hostname === 'localhost' && window.location.port === '5173'
+            ? 'http://localhost:4000'
+            : '');
 
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);

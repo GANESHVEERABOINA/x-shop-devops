@@ -10,10 +10,11 @@ import Login from './components/Login'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
-export const backendUrl = import.meta.env.VITE_BACKEND_URL || 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:4000' 
-        : `http://${window.location.hostname}:4000`);
+export const backendUrl = import.meta.env.VITE_BACKEND_URL !== undefined
+    ? import.meta.env.VITE_BACKEND_URL
+    : (window.location.hostname === 'localhost' && window.location.port === '5174'
+        ? 'http://localhost:4000'
+        : '');
 
 export const currency = '₹'
 
