@@ -9,3 +9,25 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 4000
+
+# HashiCorp Vault & External Secrets Operator Integration
+vault:
+  enabled: true
+  server: "http://vault.vault.svc.cluster.local:8200"
+  path: "secret"
+  secretKey: "x-shop/backend"
+  token: "root"
+
+# Fallback secrets (only used if vault.enabled is false)
+secrets:
+  PORT: "4000"
+  JWT_SECRET: ""
+  ADMIN_EMAIL: ""
+  ADMIN_PASSWORD: ""
+  MONGODB_URI: ""
+  CLOUDINARY_API_KEY: ""
+  CLOUDINARY_SECRET_KEY: ""
+  CLOUDINARY_NAME: ""
+  STRIPE_SECRET_KEY: ""
+  RAZORPAY_KEY_SECRET: ""
+  RAZORPAY_KEY_ID: ""

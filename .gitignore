@@ -18,6 +18,11 @@ infra-configure/ansible/secrets.json
 .DS_Store
 
 #k8s-sensitivefiles
+**/secrets.yml
+!**/secrets.example.yml
+secrets.json
+**/secrets.json
+**/k3s-kubeconfig.yaml
 
 .terraform/
 *.tfstate

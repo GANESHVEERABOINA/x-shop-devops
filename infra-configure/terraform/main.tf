@@ -9,4 +9,9 @@ resource "aws_instance" "website" {
     volume_size = 30
     volume_type = "gp3"
   }
+
+  tags = {
+    Name = count.index == 0 ? "k3s-master" : "k3s-worker-${count.index}"
+    Role = count.index == 0 ? "Master" : "Worker_${count.index}"
+  }
 }

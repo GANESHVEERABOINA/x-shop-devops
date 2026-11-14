@@ -1,0 +1,104 @@
+---
+- name: Automate Vault and External Secrets Operator (ESO) Setup on K3s Master Node
+  hosts: role_Master
+  become: yes
+  environment:
+    KUBECONFIG: "/etc/rancher/k3s/k3s.yaml"
+    PATH: "/usr/local/bin:/usr/bin:/bin:{{ ansible_env.PATH }}"
+
+  tasks:
+    - name: 0. Install Helm on Master Node if not present
+      ansible.builtin.shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: 1. Add and Update HashiCorp Helm Repository
+      ansible.builtin.shell: |
+        helm repo add hashicorp https://helm.releases.hashicorp.com
+        helm repo update
+      changed_when: false
+
+    - name: 2. Install HashiCorp Vault with Master Taint Toleration
+      ansible.builtin.shell: |
+        helm upgrade --install vault hashicorp/vault \
+          --namespace vault --create-namespace \
+          --set "server.dev.enabled=true" \
+          --set "server.tolerations[0].key=CriticalAddonsOnly" \
+          --set "server.tolerations[0].operator=Exists" \
+          --set "server.tolerations[0].effect=NoSchedule"
+
+    - name: 3. Wait for Vault Pod to be Ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=vault -n vault --timeout=120s
+      changed_when: false
+
+    - name: 4. Add and Update External Secrets Operator (ESO) Repo
+      ansible.builtin.shell: |
+        helm repo add external-secrets https://charts.external-secrets.io
+        helm repo update
+      changed_when: false
+
+    - name: 5. Install External Secrets Operator (ESO) with CRDs & Tolerations
+      ansible.builtin.shell: |
+        helm upgrade --install external-secrets external-secrets/external-secrets \
+          --namespace external-secrets --create-namespace \
+          --set installCRDs=true \
+          --set "tolerations[0].key=CriticalAddonsOnly" \
+          --set "tolerations[0].operator=Exists" \
+          --set "tolerations[0].effect=NoSchedule" \
+          --set "webhook.tolerations[0].key=CriticalAddonsOnly" \
+          --set "webhook.tolerations[0].operator=Exists" \
+          --set "webhook.tolerations[0].effect=NoSchedule" \
+          --set "certController.tolerations[0].key=CriticalAddonsOnly" \
+          --set "certController.tolerations[0].operator=Exists" \
+          --set "certController.tolerations[0].effect=NoSchedule"
+
+    - name: 6. Wait for External Secrets Operator Deployments to be Ready
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/external-secrets -n external-secrets --timeout=120s
+        kubectl rollout status deployment/external-secrets-webhook -n external-secrets --timeout=120s
+        kubectl rollout status deployment/external-secrets-cert-controller -n external-secrets --timeout=120s
+      changed_when: false
+
+    - name: 7. Check if local secrets.json exists
+      delegate_to: localhost
+      become: false
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../secrets.json"
+      register: local_secrets_file
+
+    - name: 8. Copy secrets.json to Master Node if available
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../secrets.json"
+        dest: "/tmp/secrets.json"
+        mode: '0600'
+      when: local_secrets_file.stat.exists
+
+    - name: 9. Inject secrets into Vault KV v2 engine
+      ansible.builtin.shell: |
+        if [ -f /tmp/secrets.json ]; then
+          cat /tmp/secrets.json | kubectl exec -i -n vault vault-0 -- sh -c 'cat > /tmp/s.json && vault kv put secret/x-shop/backend @/tmp/s.json && rm -f /tmp/s.json'
+          rm -f /tmp/secrets.json
+        else
+          # Initialize default secret path if secrets.json was not provided
+          kubectl exec -n vault vault-0 -- vault kv put secret/x-shop/backend \
+            PORT="4000" \
+            JWT_SECRET="your_jwt_secret_key" \
+            ADMIN_EMAIL="admin@xshop.com" \
+            ADMIN_PASSWORD="your_secure_admin_password" \
+            MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.mongodb.net/?appName=xshop"
+        fi
+      changed_when: true
+
+    - name: 10. Verify secrets in Vault
+      ansible.builtin.shell: |
+        kubectl exec -n vault vault-0 -- vault kv get secret/x-shop/backend
+      register: vault_check
+      changed_when: false
+
+    - name: 11. Display Vault Status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Vault and ESO installed successfully!"
+          - "Secrets path secret/x-shop/backend initialized in Vault."
