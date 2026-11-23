@@ -1,43 +1,53 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { ShopContext } from '../context/ShopContext'
-import { assets } from '../assets/assets';
+import React, { useContext, useEffect, useState } from 'react';
+import { ShopContext } from '../context/ShopContext';
 import { useLocation } from 'react-router-dom';
 
 const SearchBar = () => {
+  const { search, setSearch, showSearch, setShowSearch } = useContext(ShopContext);
+  const [visible, setVisible] = useState(false);
+  const location = useLocation();
 
-    const { search, setSearch, showSearch, setShowSearch} = useContext(ShopContext);
-    const [visible,setVisible] = useState(false)
-    const location = useLocation();
+  useEffect(() => {
+    setVisible(location.pathname.includes('collection'));
+  }, [location]);
 
-    useEffect(()=>{
-        if (location.pathname.includes('collection')) {
-            setVisible(true);
-        }
-        else {
-            setVisible(false)
-        }
-    },[location])
-    
-  return showSearch && visible ? (
-    <div className='text-center py-6'>
-      <div className='inline-flex items-center justify-center bg-white/5 backdrop-blur-md border border-white/20 px-6 py-2.5 mx-3 rounded-full w-3/4 sm:w-1/2 shadow-lg transition-all duration-300 focus-within:bg-white/10 focus-within:border-white/40 focus-within:shadow-[0_0_15px_rgba(255,255,255,0.05)]'>
-        <input 
-          value={search} 
-          onChange={(e)=>setSearch(e.target.value)} 
-          className='flex-1 outline-none bg-transparent text-white placeholder-gray-500 text-sm' 
-          type="text" 
-          placeholder='Search for products...'
-        />
-        <img className='w-4 opacity-80 hover:opacity-100 transition-opacity cursor-pointer' src={assets.search_icon} alt="Search" />
+  if (!showSearch || !visible) return null;
+
+  return (
+    <div className="border-b border-white/[0.08] bg-black/50 backdrop-blur-xl py-4 px-4">
+      <div className="max-w-xl mx-auto flex items-center gap-3">
+        <div className="flex-1 flex items-center gap-2.5 glass-input rounded-2xl px-4 py-2.5">
+          <svg className="w-4 h-4 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+          </svg>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            type="text"
+            placeholder="Search products..."
+            autoFocus
+            className="w-full bg-transparent outline-none text-sm text-white placeholder:text-zinc-500"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="text-xs text-zinc-400 hover:text-white cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        <button
+          onClick={() => setShowSearch(false)}
+          aria-label="Close search"
+          className="glass-pill w-10 h-10 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white cursor-pointer shrink-0"
+        >
+          ✕
+        </button>
       </div>
-      <img 
-        onClick={()=>setShowSearch(false)} 
-        className='inline w-4 ml-4 cursor-pointer opacity-70 hover:opacity-100 hover:rotate-90 transition-all duration-300' 
-        src={assets.cross_icon} 
-        alt="Close" 
-      />
     </div>
-  ) : null
-}
+  );
+};
 
-export default SearchBar
+export default SearchBar;

@@ -13,16 +13,26 @@ const razorpayInstance = new razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 })
 
-// Placing orders using COD / UPI Method (Stores in MongoDB)
+// Placing orders using COD / UPI Method (Blocks empty ₹10 shipping-only orders)
 const placeOrder = async (req, res) => {
     try {
         const { userId, items, amount, address, paymentMethod } = req.body;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.json({ success: false, message: "Cart is empty. Add items before placing an order." });
+        }
+
+        const computedSubtotal = items.reduce(
+            (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+            0
+        );
+        const finalAmount = computedSubtotal > 0 ? computedSubtotal + deliveryCharge : Number(amount || 0);
 
         const orderData = {
             userId,
             items,
             address,
-            amount,
+            amount: finalAmount,
             paymentMethod: paymentMethod || "COD",
             payment: paymentMethod === "UPI" ? true : false,
             date: Date.now(),
@@ -61,6 +71,10 @@ const placeOrderStripe = async (req, res) => {
     try {
         const { userId, items, amount, address } = req.body
         const { origin } = req.headers;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.json({ success: false, message: "Cart is empty. Add items before placing an order." });
+        }
 
         const orderData = {
             userId,
@@ -130,6 +144,10 @@ const placeOrderRazorpay = async (req, res) => {
     try {
         const { userId, items, amount, address } = req.body
 
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.json({ success: false, message: "Cart is empty. Add items before placing an order." });
+        }
+
         const orderData = {
             userId,
             items,
@@ -181,10 +199,10 @@ const verifyRazorpay = async (req, res) => {
     }
 }
 
-// All Orders data for Admin Panel
+// All Orders data for Admin Panel (Excludes old 0-item ghost records)
 const allOrders = async (req, res) => {
     try {
-        const orders = await orderModel.find({})
+        const orders = await orderModel.find({ 'items.0': { $exists: true } })
         res.json({ success: true, orders })
     } catch (error) {
         console.log(error)
@@ -192,11 +210,11 @@ const allOrders = async (req, res) => {
     }
 }
 
-// User Order Data For Frontend (Sorted newest first)
+// User Order Data For Frontend (Sorted newest first, excludes 0-item ghost records)
 const userOrders = async (req, res) => {
     try {
         const { userId } = req.body
-        const orders = await orderModel.find({ userId }).sort({ date: -1 })
+        const orders = await orderModel.find({ userId, 'items.0': { $exists: true } }).sort({ date: -1 })
         res.json({ success: true, orders })
     } catch (error) {
         console.log(error)
@@ -204,7 +222,7 @@ const userOrders = async (req, res) => {
     }
 }
 
-// Update order status from Admin Panel (Saves real tracking step in DB)
+// Update order status from Admin Panel
 const updateStatus = async (req, res) => {
     try {
         const { orderId, status } = req.body
@@ -230,7 +248,7 @@ const updateStatus = async (req, res) => {
     }
 }
 
-// Allow User to Cancel Order (Saves in MongoDB)
+// Allow User to Cancel Order
 const cancelOrder = async (req, res) => {
     try {
         const { userId, orderId } = req.body;

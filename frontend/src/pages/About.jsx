@@ -1,48 +1,65 @@
 import React from 'react';
-import Title from '../components/Title';
-import NewsletterBox from '../components/NewsletterBox';
+import { assets } from '../assets/assets';
 
 const About = () => {
+  const highlights = [
+    {
+      title: 'Quality Assurance',
+      desc: 'Every garment is selected and inspected to meet strict comfort and durability standards.',
+    },
+    {
+      title: 'Seamless Checkout',
+      desc: 'Fast, secure ordering with UPI, cards, and cash on delivery across India.',
+    },
+    {
+      title: 'Dedicated Support',
+      desc: 'Responsive customer care for quick sizing help, order tracking, and easy returns.',
+    },
+  ];
+
   return (
-    <div className="text-white space-y-12 pt-6 pb-16 max-w-7xl mx-auto px-4 sm:px-6">
-      <div className="text-center">
-        <span className="bg-neutral-900 border border-neutral-700 text-[#ffc200] text-[11px] font-bold px-3.5 py-1 rounded-full tracking-wider uppercase">
-          📖 WHO WE ARE
-        </span>
-        <div className="mt-2">
-          <Title text1={'ABOUT'} text2={'US'} />
-        </div>
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-8 pb-20 text-zinc-100 space-y-12">
+      <div className="border-b border-white/[0.08] pb-5">
+        <p className="text-[11px] font-semibold tracking-[0.2em] text-violet-400 uppercase mb-1">
+          Our Story
+        </p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          About X-Shop
+        </h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-[#111111] border border-neutral-800 p-6 sm:p-10 rounded-3xl shadow-2xl">
-        <div className="md:col-span-5 relative aspect-[4/3] rounded-2xl overflow-hidden border border-neutral-700">
-          <img
-            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1000&auto=format&fit=crop"
-            alt="About X-Shop"
-            className="w-full h-full object-cover hover:scale-105 transition duration-500"
-          />
-        </div>
-
-        <div className="md:col-span-7 space-y-5 text-gray-300 text-sm sm:text-base leading-relaxed">
-          <p>
-            <strong className="text-white">X-Shop</strong> was born out of a passion for innovation and a desire to revolutionize the way people shop online. Our journey began with a simple idea: to provide a platform where customers can easily discover, explore, and purchase top-tier fashion products from the comfort of their homes.
-          </p>
-          <p>
-            Since our inception, we’ve worked tirelessly to curate a diverse selection of high-quality apparel and accessories that cater to every style and preference.
-          </p>
-          
-          <div className="bg-black/60 border border-neutral-800 p-5 rounded-2xl space-y-2">
-            <h3 className="text-sm font-extrabold text-[#ffc200] uppercase tracking-wider">
-              ⚡ OUR MISSION
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-400">
-              Our mission at X-Shop is to empower customers with choice, convenience, and confidence. We’re dedicated to providing a seamless shopping experience from browsing and secure checkout to lightning-fast delivery.
-            </p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        {assets.about_img && (
+          <div className="lg:col-span-5 glass-card rounded-3xl overflow-hidden">
+            <img
+              src={assets.about_img}
+              alt="About X-Shop"
+              className="w-full h-full object-cover max-h-[420px]"
+            />
           </div>
+        )}
+
+        <div className={`${assets.about_img ? 'lg:col-span-7' : 'lg:col-span-12'} glass-card rounded-3xl p-6 sm:p-10 space-y-5`}>
+          <h2 className="text-xl sm:text-2xl font-bold text-white">
+            Designed for modern everyday wear.
+          </h2>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            X-Shop was built with a simple goal: bring clean design, dependable fabric quality, and a smooth online shopping experience together under one roof.
+          </p>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            From daily essentials to seasonal drops, we focus on timeless silhouettes and transparent pricing backed by reliable cloud infrastructure.
+          </p>
         </div>
       </div>
 
-      <NewsletterBox />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {highlights.map((item, idx) => (
+          <div key={idx} className="glass-card rounded-2xl p-6 space-y-2">
+            <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">{item.desc}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

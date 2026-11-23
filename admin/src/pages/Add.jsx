@@ -58,24 +58,29 @@ const Add = ({ token }) => {
   }
 
   return (
-    <form onSubmit={onSubmitHandler} className='flex flex-col w-full items-start gap-6 text-white max-w-4xl pb-20'>
+    <form onSubmit={onSubmitHandler} className='flex flex-col w-full items-start gap-6 text-zinc-100 max-w-4xl mx-auto pb-12'>
       
-      {/* Upload Images Section */}
-      <div className='bg-[#111111] border border-neutral-800 rounded-3xl p-6 sm:p-8 w-full space-y-4 shadow-xl'>
-        <p className='text-sm font-extrabold text-[#ffc200] uppercase tracking-wider'>1. Upload Product Images</p>
+      <div className='w-full'>
+        <h2 className='text-2xl font-bold tracking-tight text-white'>Add Product</h2>
+        <p className='text-xs sm:text-sm text-zinc-400 mt-1'>Create a new item in your X-Shop catalog</p>
+      </div>
+
+      {/* Upload Images */}
+      <div className='glass-card rounded-2xl p-6 w-full space-y-4'>
+        <p className='text-xs font-semibold text-zinc-300 uppercase tracking-wider'>Product Media</p>
         
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
           {[image1, image2, image3, image4].map((img, idx) => {
             const setters = [setImage1, setImage2, setImage3, setImage4];
             return (
               <label key={idx} htmlFor={`image${idx + 1}`} className='cursor-pointer group'>
-                <div className='w-full aspect-[3/4] bg-black border border-neutral-700 group-hover:border-[#ffc200] rounded-2xl flex flex-col items-center justify-center overflow-hidden transition shadow'>
+                <div className='w-full aspect-[3/4] glass-input group-hover:border-violet-400/60 rounded-2xl flex flex-col items-center justify-center overflow-hidden transition'>
                   <img
                     className='w-full h-full object-cover'
                     src={!img ? assets.upload_area : URL.createObjectURL(img)}
                     alt="Upload"
                   />
-                  {!img && <span className='text-[10px] text-gray-400 mt-1 font-semibold'>Upload +</span>}
+                  {!img && <span className='text-[11px] text-zinc-400 mt-1 font-medium'>Upload +</span>}
                 </div>
                 <input onChange={(e) => setters[idx](e.target.files[0])} type="file" id={`image${idx + 1}`} hidden />
               </label>
@@ -84,40 +89,41 @@ const Add = ({ token }) => {
         </div>
       </div>
 
-      {/* Product Details Section */}
-      <div className='bg-[#111111] border border-neutral-800 rounded-3xl p-6 sm:p-8 w-full space-y-5 shadow-xl'>
-        <p className='text-sm font-extrabold text-[#ffc200] uppercase tracking-wider'>2. Product Information</p>
+      {/* Product Details */}
+      <div className='glass-card rounded-2xl p-6 w-full space-y-5'>
+        <p className='text-xs font-semibold text-zinc-300 uppercase tracking-wider'>Product Details</p>
 
-        <div className='space-y-2'>
-          <p className='text-xs font-bold text-gray-300'>Product Name</p>
+        <div className='space-y-1.5'>
+          <label className='text-xs font-medium text-zinc-400 block'>Product Name</label>
           <input
             onChange={(e) => setName(e.target.value)}
             value={name}
             type="text"
-            placeholder="Type product name here..."
+            placeholder="e.g. Oversized Cotton Tee"
             required
-            className='w-full bg-black border border-neutral-700 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#ffc200] outline-none transition'
+            className='w-full glass-input rounded-xl px-4 py-2.5 text-sm placeholder:text-zinc-600'
           />
         </div>
 
-        <div className='space-y-2'>
-          <p className='text-xs font-bold text-gray-300'>Product Description</p>
+        <div className='space-y-1.5'>
+          <label className='text-xs font-medium text-zinc-400 block'>Description</label>
           <textarea
             onChange={(e) => setDescription(e.target.value)}
             value={description}
-            placeholder="Write detailed product description here..."
+            placeholder="Write product description..."
             required
             rows={4}
-            className='w-full bg-black border border-neutral-700 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#ffc200] outline-none transition resize-none'
+            className='w-full glass-input rounded-xl px-4 py-2.5 text-sm placeholder:text-zinc-600 resize-none'
           />
         </div>
 
         <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-          <div className='space-y-2'>
-            <p className='text-xs font-bold text-gray-300'>Category</p>
+          <div className='space-y-1.5'>
+            <label className='text-xs font-medium text-zinc-400 block'>Category</label>
             <select
               onChange={(e) => setCategory(e.target.value)}
-              className='w-full bg-black border border-neutral-700 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#ffc200] outline-none cursor-pointer'
+              value={category}
+              className='w-full glass-input rounded-xl px-3.5 py-2.5 text-sm cursor-pointer'
             >
               <option value="Men">Men</option>
               <option value="Women">Women</option>
@@ -125,11 +131,12 @@ const Add = ({ token }) => {
             </select>
           </div>
 
-          <div className='space-y-2'>
-            <p className='text-xs font-bold text-gray-300'>Sub Category</p>
+          <div className='space-y-1.5'>
+            <label className='text-xs font-medium text-zinc-400 block'>Sub Category</label>
             <select
               onChange={(e) => setSubCategory(e.target.value)}
-              className='w-full bg-black border border-neutral-700 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#ffc200] outline-none cursor-pointer'
+              value={subCategory}
+              className='w-full glass-input rounded-xl px-3.5 py-2.5 text-sm cursor-pointer'
             >
               <option value="Topwear">Topwear</option>
               <option value="Bottomwear">Bottomwear</option>
@@ -137,31 +144,31 @@ const Add = ({ token }) => {
             </select>
           </div>
 
-          <div className='space-y-2'>
-            <p className='text-xs font-bold text-gray-300'>Product Price (₹)</p>
+          <div className='space-y-1.5'>
+            <label className='text-xs font-medium text-zinc-400 block'>Price (₹)</label>
             <input
               onChange={(e) => setPrice(e.target.value)}
               value={price}
               type="number"
               placeholder="999"
               required
-              className='w-full bg-black border border-neutral-700 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#ffc200] outline-none'
+              className='w-full glass-input rounded-xl px-3.5 py-2.5 text-sm placeholder:text-zinc-600'
             />
           </div>
         </div>
 
-        {/* Sizes Selection */}
-        <div className='space-y-3 pt-2'>
-          <p className='text-xs font-bold text-gray-300'>Select Product Sizes</p>
-          <div className='flex gap-3'>
+        {/* Sizes */}
+        <div className='space-y-2.5 pt-1'>
+          <label className='text-xs font-medium text-zinc-400 block'>Available Sizes</label>
+          <div className='flex flex-wrap gap-2.5'>
             {['S', 'M', 'L', 'XL', 'XXL'].map((item) => (
               <div
                 key={item}
-                onClick={() => setSizes(prev => prev.includes(item) ? prev.filter(item => item !== item) : [...prev, item])}
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-sm border cursor-pointer transition ${
+                onClick={() => setSizes(prev => prev.includes(item) ? prev.filter(s => s !== item) : [...prev, item])}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center font-semibold text-xs cursor-pointer transition-all ${
                   sizes.includes(item)
-                    ? 'bg-[#ffc200] border-[#ffc200] text-black shadow-lg scale-105'
-                    : 'bg-black border-neutral-700 text-gray-300 hover:border-gray-400'
+                    ? 'btn-primary'
+                    : 'glass-pill text-zinc-300 hover:text-white'
                 }`}
               >
                 {item}
@@ -170,17 +177,17 @@ const Add = ({ token }) => {
           </div>
         </div>
 
-        {/* Bestseller Checkbox */}
-        <div className='flex items-center gap-3 pt-2 cursor-pointer'>
+        {/* Bestseller */}
+        <div className='flex items-center gap-3 pt-1'>
           <input
             onChange={() => setBestseller(prev => !prev)}
             checked={bestseller}
             type="checkbox"
             id="bestseller"
-            className='w-5 h-5 accent-[#ffc200] cursor-pointer'
+            className='w-4 h-4 accent-violet-500 cursor-pointer'
           />
-          <label htmlFor="bestseller" className='text-xs sm:text-sm font-bold text-gray-200 cursor-pointer'>
-            Add to X-Shop Bestseller Collection
+          <label htmlFor="bestseller" className='text-xs sm:text-sm font-medium text-zinc-300 cursor-pointer'>
+            Feature in Bestsellers
           </label>
         </div>
 
@@ -188,9 +195,9 @@ const Add = ({ token }) => {
 
       <button
         type="submit"
-        className='py-4 px-10 rounded-2xl bg-[#ffc200] hover:bg-[#ffcf33] text-black font-extrabold text-sm uppercase tracking-wider shadow-xl transition cursor-pointer'
+        className='py-3 px-8 rounded-xl btn-primary font-semibold text-sm cursor-pointer'
       >
-        ADD PRODUCT
+        Publish Product
       </button>
 
     </form>

@@ -21,6 +21,7 @@ const ShopContextProvider = (props) => {
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
+    const [productsLoading, setProductsLoading] = useState(true);
     const [token, setToken] = useState('');
     const [userData, setUserData] = useState(null);
     const [wishlist, setWishlist] = useState([]);
@@ -101,14 +102,15 @@ const ShopContextProvider = (props) => {
     const getProductsData = async () => {
         try {
             const response = await axios.get(backendUrl + '/api/product/list');
-            if (response.data.success) {
+            if (response.data.success && Array.isArray(response.data.products) && response.data.products.length > 0) {
                 setProducts(response.data.products.reverse());
-            } else {
-                toast.error(response.data.message);
+                setProductsLoading(false);
+                return true;
             }
         } catch (error) {
-            console.log(error);
+            console.log('Waiting for backend/DB connection...', error.message);
         }
+        return false;
     }
 
     const getUserCart = async (userToken) => {
@@ -169,7 +171,22 @@ const ShopContextProvider = (props) => {
     }
 
     useEffect(() => {
-        getProductsData();
+        let isMounted = true;
+        let retryTimer;
+
+        const fetchProductsUntilConnected = async () => {
+            const isLoaded = await getProductsData();
+            if (!isLoaded && isMounted) {
+                retryTimer = setTimeout(fetchProductsUntilConnected, 3000);
+            }
+        };
+
+        fetchProductsUntilConnected();
+
+        return () => {
+            isMounted = false;
+            if (retryTimer) clearTimeout(retryTimer);
+        };
     }, []);
 
     useEffect(() => {
@@ -190,7 +207,7 @@ const ShopContextProvider = (props) => {
     }, [token]);
 
     const value = {
-        products, currency, delivery_fee,
+        products, productsLoading, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity,

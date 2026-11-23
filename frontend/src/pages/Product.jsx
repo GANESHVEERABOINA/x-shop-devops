@@ -1,292 +1,280 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import RelatedProducts from '../components/RelatedProducts';
-import { toast } from 'react-toastify';
 
 const Product = () => {
   const { productId } = useParams();
-  const { products, currency, addToCart, navigate, token } = useContext(ShopContext);
+  const {
+    products,
+    productsLoading,
+    currency,
+    addToCart,
+    wishlist,
+    toggleWishlist,
+    navigate,
+  } = useContext(ShopContext);
 
   const [productData, setProductData] = useState(null);
-  const [activeImage, setActiveImage] = useState('');
+  const [image, setImage] = useState('');
   const [size, setSize] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [wishlisted, setWishlisted] = useState(false);
-  const [showOffers, setShowOffers] = useState(true);
-  const [showSizeChart, setShowSizeChart] = useState(false);
 
   useEffect(() => {
-    const item = products.find((p) => p._id === productId);
-    if (item) {
-      setProductData(item);
-      const imgs = Array.isArray(item.image) ? item.image : [item.image];
-      setActiveImage(imgs[0] || '');
-      setSize(item.sizes?.[0] || '');
-      setQuantity(1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    const found = products.find((item) => item._id === productId);
+    if (found) {
+      setProductData(found);
+      const imgs = Array.isArray(found.image) ? found.image : [found.image];
+      setImage(imgs[0] || '');
+      setSize('');
     }
   }, [productId, products]);
 
-  if (!productData) {
+  const isLoading = productsLoading || !productData;
+
+  if (isLoading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center text-gray-400 text-sm">
-        Loading product details...
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-16">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8">
+          <div className="md:col-span-5">
+            <div className="h-[420px] rounded-2xl xshop-shimmer border border-white/[0.08]" />
+          </div>
+          <div className="md:col-span-7 glass-card rounded-3xl p-6 space-y-4">
+            <div className="h-4 w-24 rounded-full xshop-shimmer" />
+            <div className="h-7 w-4/5 rounded-xl xshop-shimmer" />
+            <div className="h-6 w-24 rounded-xl xshop-shimmer" />
+            <div className="h-16 w-full rounded-2xl xshop-shimmer" />
+            <div className="flex gap-2.5 pt-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="w-11 h-10 rounded-xl xshop-shimmer" />
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="h-11 rounded-xl xshop-shimmer" />
+              <div className="h-11 rounded-xl xshop-shimmer" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   const images = Array.isArray(productData.image) ? productData.image : [productData.image];
-  const sellingPrice = Number(productData.price) || 999;
-  const mrpPrice = Math.round(sellingPrice * 2.4);
-  const discountPercent = Math.round(((mrpPrice - sellingPrice) / mrpPrice) * 100);
-  const specialDealPrice = Math.max(sellingPrice - Math.round(sellingPrice * 0.08), 99);
+  const isWishlisted = wishlist.includes(productData._id);
+  const isSoldOut = Boolean(productData.soldOut);
 
-  // STRICT LOGIN CHECK FOR ADD TO CART
-  const handleAddToCart = () => {
-    if (!token) {
-      toast.error('Please login first to add items to cart!');
-      navigate('/login');
-      return;
-    }
-    if (!size) {
-      toast.error('Please select a size!');
-      return;
-    }
-    for (let i = 0; i < quantity; i++) {
-      addToCart(productData._id, size);
-    }
-    toast.success('Added to cart!');
-  };
-
-  // STRICT LOGIN CHECK FOR BUY NOW
   const handleBuyNow = () => {
-    if (!token) {
-      toast.error('Please login first to proceed with purchase!');
-      navigate('/login');
-      return;
-    }
+    if (isSoldOut) return;
     if (!size) {
-      toast.error('Please select a size!');
+      addToCart(productData._id, size);
       return;
     }
-    for (let i = 0; i < quantity; i++) {
-      addToCart(productData._id, size);
-    }
-    navigate('/place-order');
+    addToCart(productData._id, size);
+    navigate('/cart');
+    window.scrollTo(0, 0);
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 pb-32 sm:pb-16 text-white">
-      {/* Breadcrumbs */}
-      <nav className="text-[11px] sm:text-xs text-gray-400 mb-4 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap">
-        <Link to="/" className="hover:text-[#ffc200]">Home</Link>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 pb-16 text-zinc-100">
+      {/* Compact Breadcrumb */}
+      <nav className="flex items-center gap-2 text-xs text-zinc-500 mb-5 overflow-x-auto whitespace-nowrap">
+        <Link to="/" className="hover:text-zinc-200 transition">Home</Link>
         <span>/</span>
-        <Link to="/collection" className="hover:text-[#ffc200]">{productData.category || 'Fashion'}</Link>
+        <Link to="/collection" className="hover:text-zinc-200 transition">Collection</Link>
+        {productData.category && (
+          <>
+            <span>/</span>
+            <span className="text-zinc-400">{productData.category}</span>
+          </>
+        )}
         <span>/</span>
-        <span className="text-gray-500">{productData.subCategory || 'Collection'}</span>
-        <span>/</span>
-        <span className="text-white font-semibold truncate max-w-[200px] sm:max-w-xs">{productData.name}</span>
+        <span className="text-zinc-200 truncate max-w-[260px]">{productData.name}</span>
       </nav>
 
-      {/* Main Responsive Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-        
-        {/* LEFT: Product Images */}
-        <div className="lg:col-span-6">
-          <div className="block lg:hidden">
-            <div className="relative w-full max-w-[320px] mx-auto aspect-[3/4] bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-              <img src={activeImage} alt={productData.name} className="w-full h-full object-cover object-top" />
-              <button
-                onClick={() => setWishlisted(!wishlisted)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 text-black flex items-center justify-center shadow cursor-pointer"
-              >
-                {wishlisted ? '❤️' : '🤍'}
-              </button>
-            </div>
-            {images.length > 1 && (
-              <div className="flex justify-center gap-2.5 mt-3 overflow-x-auto py-1">
-                {images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveImage(img)}
-                    className={`w-14 h-16 rounded-lg overflow-hidden border-2 shrink-0 cursor-pointer ${
-                      activeImage === img ? 'border-[#ffc200]' : 'border-neutral-800 opacity-60'
-                    }`}
-                  >
-                    <img src={img} alt="thumb" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
+      {/* Compact Balanced Product View */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start">
+        {/* Left: Compact Gallery */}
+        <div className="md:col-span-5 space-y-3">
+          <div className="relative glass-card rounded-2xl overflow-hidden w-full h-[380px] sm:h-[440px] bg-zinc-950">
+            <img
+              src={image || images[0]}
+              alt={productData.name}
+              className={`w-full h-full object-cover object-top ${isSoldOut ? 'opacity-55 grayscale' : ''}`}
+            />
+
+            {isSoldOut && (
+              <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-rose-500/90 text-white text-[11px] font-bold tracking-wider uppercase shadow">
+                Sold Out
+              </span>
             )}
+
+            <button
+              onClick={() => toggleWishlist(productData._id)}
+              aria-label="Toggle wishlist"
+              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/70 backdrop-blur-md border border-white/15 hover:border-violet-400/60 flex items-center justify-center cursor-pointer transition hover:scale-105"
+            >
+              <svg
+                className={`w-4 h-4 transition-colors ${
+                  isWishlisted ? 'text-violet-400 fill-violet-400' : 'text-zinc-200 fill-none'
+                }`}
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
+              </svg>
+            </button>
           </div>
 
-          <div className={`hidden lg:grid gap-3 ${images.length === 1 ? 'grid-cols-1 max-w-[340px] mx-auto' : 'grid-cols-2'}`}>
-            {images.map((img, idx) => (
-              <div key={idx} className="relative bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden h-[320px]">
-                <img
-                  src={img}
-                  alt={`${productData.name} ${idx + 1}`}
-                  className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-300"
-                />
-                {idx === 0 && (
-                  <button
-                    onClick={() => setWishlisted(!wishlisted)}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 text-black flex items-center justify-center shadow cursor-pointer"
-                  >
-                    {wishlisted ? '❤️' : '🤍'}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+          {images.length > 1 && (
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
+              {images.map((imgItem, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setImage(imgItem)}
+                  className={`w-14 h-16 shrink-0 rounded-xl overflow-hidden border transition cursor-pointer bg-zinc-950 ${
+                    image === imgItem
+                      ? 'border-violet-400 ring-2 ring-violet-500/30'
+                      : 'border-white/10 opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img
+                    src={imgItem}
+                    alt={`${productData.name} ${idx + 1}`}
+                    className="w-full h-full object-cover object-top"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* RIGHT: Product Details */}
-        <div className="lg:col-span-6 bg-[#111111] border border-neutral-800 rounded-2xl p-4 sm:p-6 space-y-4">
-          {productData.sizes?.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs sm:text-sm font-semibold text-gray-200">Select Size</span>
-                <button onClick={() => setShowSizeChart(true)} className="text-xs font-semibold text-[#ffc200] hover:underline cursor-pointer">
-                  Size Chart
-                </button>
+        {/* Right: Compact Details Card */}
+        <div className="md:col-span-7 glass-card rounded-2xl p-5 sm:p-6 space-y-5">
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              {productData.category && (
+                <span className="glass-pill px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-violet-300">
+                  {productData.category}
+                </span>
+              )}
+              {productData.subCategory && (
+                <span className="glass-pill px-2.5 py-0.5 rounded-full text-[11px] font-medium text-zinc-400">
+                  {productData.subCategory}
+                </span>
+              )}
+              {isSoldOut && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                  Out of Stock
+                </span>
+              )}
+            </div>
+
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-snug">
+              {productData.name}
+            </h1>
+
+            <div className="flex items-baseline gap-2.5">
+              <span className="text-2xl font-bold text-white tabular-nums">
+                {currency}{productData.price}
+              </span>
+              <span className="text-[11px] text-zinc-500">Inclusive of all taxes</span>
+            </div>
+          </div>
+
+          {productData.description && (
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed border-t border-white/[0.08] pt-4">
+              {productData.description}
+            </p>
+          )}
+
+          {/* Size Selector */}
+          {Array.isArray(productData.sizes) && productData.sizes.length > 0 && (
+            <div className="space-y-2.5 border-t border-white/[0.08] pt-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  Select Size
+                </p>
+                {size && (
+                  <span className="text-xs text-violet-400 font-medium">
+                    Size: {size}
+                  </span>
+                )}
               </div>
+
               <div className="flex flex-wrap gap-2">
-                {productData.sizes.map((s, idx) => (
+                {productData.sizes.map((item, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setSize(s)}
-                    className={`min-w-[44px] h-10 px-3 rounded-lg text-xs sm:text-sm font-bold border transition cursor-pointer ${
-                      size === s
-                        ? 'bg-[#ffc200] text-black border-[#ffc200]'
-                        : 'bg-neutral-900 text-gray-300 border-neutral-700 hover:border-gray-400'
+                    disabled={isSoldOut}
+                    onClick={() => setSize(item)}
+                    className={`min-w-[42px] h-10 px-3 rounded-xl text-xs font-semibold transition ${
+                      isSoldOut
+                        ? 'glass-pill text-zinc-600 cursor-not-allowed opacity-50'
+                        : size === item
+                        ? 'btn-primary cursor-pointer'
+                        : 'glass-pill text-zinc-300 hover:text-white cursor-pointer'
                     }`}
                   >
-                    {s}
+                    {item}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          <div>
-            <Link to="/collection" className="text-xs font-bold text-[#ffc200] hover:underline uppercase tracking-wider">
-              Visit X-Shop {productData.category} Store
-            </Link>
-            <h1 className="text-lg sm:text-2xl font-extrabold text-white mt-1">
-              {productData.name}
-            </h1>
-            <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-              {productData.description}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 bg-neutral-900 border border-neutral-700 px-2.5 py-0.5 rounded text-xs font-semibold">
-              4.2 <span className="text-emerald-400">★</span> | Verified X-Shop Ratings
-            </span>
-          </div>
-
-          <div className="space-y-1">
-            <span className="inline-block bg-emerald-600 text-white text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded">
-              Lowest Price Live
-            </span>
-            <div className="flex items-baseline gap-2.5">
-              <span className="text-emerald-400 font-bold text-lg sm:text-2xl">↓{discountPercent}%</span>
-              <span className="text-gray-500 line-through text-sm sm:text-lg">{currency}{mrpPrice}</span>
-              <span className="text-[#ffc200] font-extrabold text-xl sm:text-3xl">{currency}{sellingPrice}</span>
-            </div>
-          </div>
-
-          <div className="rounded-xl overflow-hidden border border-neutral-700">
+          {/* Actions */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
             <button
-              onClick={() => setShowOffers(!showOffers)}
-              className="w-full flex items-center justify-between bg-neutral-900 px-3.5 py-2.5 text-xs font-bold text-[#ffc200] cursor-pointer"
+              disabled={isSoldOut}
+              onClick={() => addToCart(productData._id, size)}
+              className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                isSoldOut
+                  ? 'bg-zinc-900 border border-white/10 text-zinc-600 cursor-not-allowed'
+                  : 'glass-pill hover:border-white/25 text-white cursor-pointer'
+              }`}
             >
-              <span>⚡ X-SHOP DEAL • Apply offers for maximum savings</span>
-              <span>{showOffers ? '▲' : '▼'}</span>
-            </button>
-            {showOffers && (
-              <div className="p-3.5 bg-black/60 text-xs space-y-1.5">
-                <p className="font-bold text-white text-sm">
-                  Get it for {currency}{specialDealPrice}
-                </p>
-                <p className="text-gray-400">• 5% Unlimited Cashback on X-Shop Bank & Credit Cards</p>
-                <p className="text-gray-400">• Instant 8% discount on UPI Orders</p>
-              </div>
-            )}
-          </div>
-
-          {/* Desktop Buttons */}
-          <div className="hidden sm:grid grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={handleAddToCart}
-              className="py-3 px-4 rounded-xl border border-neutral-600 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-sm cursor-pointer"
-            >
-              Add to cart
+              {isSoldOut ? 'Unavailable' : 'Add to Cart'}
             </button>
             <button
+              disabled={isSoldOut}
               onClick={handleBuyNow}
-              className="py-3 px-4 rounded-xl bg-[#ffc200] hover:bg-[#ffcf33] text-black font-bold text-sm cursor-pointer"
+              className={`py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                isSoldOut
+                  ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                  : 'btn-primary cursor-pointer'
+              }`}
             >
-              Buy at {currency}{sellingPrice}
+              {isSoldOut ? 'Sold Out' : 'Buy Now'}
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* MOBILE STICKY BOTTOM BAR */}
-      <div className="sm:hidden fixed bottom-14 inset-x-0 bg-[#121212] border-t border-neutral-800 p-3 grid grid-cols-2 gap-3 z-40 shadow-[0_-5px_15px_rgba(0,0,0,0.8)]">
-        <button
-          onClick={handleAddToCart}
-          className="py-3 rounded-xl border border-neutral-600 bg-neutral-900 text-white font-bold text-xs cursor-pointer shadow"
-        >
-          Add to cart
-        </button>
-        <button
-          onClick={handleBuyNow}
-          className="py-3 rounded-xl bg-[#ffc200] text-black font-extrabold text-xs cursor-pointer shadow"
-        >
-          Buy at {currency}{sellingPrice}
-        </button>
-      </div>
-
-      {/* Size Chart Modal */}
-      {showSizeChart && (
-        <div
-          onClick={() => setShowSizeChart(false)}
-          className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-sm w-full p-4 space-y-3"
-          >
-            <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
-              <h4 className="text-sm font-bold text-[#ffc200]">X-Shop Size Chart (Inches)</h4>
-              <button onClick={() => setShowSizeChart(false)} className="cursor-pointer">✕</button>
+          {/* Minimal Assurances */}
+          <div className="grid grid-cols-3 gap-2.5 pt-4 border-t border-white/[0.08] text-center">
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl py-2.5 px-2">
+              <p className="text-[11px] font-semibold text-zinc-200">100% Original</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">Verified quality</p>
             </div>
-            <table className="w-full text-xs text-left text-gray-300">
-              <thead>
-                <tr className="border-b border-neutral-800 text-gray-400">
-                  <th className="py-1">Size</th><th>Chest</th><th>Length</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td className="py-1 font-bold">S</td><td>38</td><td>27.5</td></tr>
-                <tr><td className="py-1 font-bold">M</td><td>40</td><td>28.5</td></tr>
-                <tr><td className="py-1 font-bold">L</td><td>42</td><td>29.5</td></tr>
-                <tr><td className="py-1 font-bold">XL</td><td>44</td><td>30.5</td></tr>
-              </tbody>
-            </table>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl py-2.5 px-2">
+              <p className="text-[11px] font-semibold text-zinc-200">COD & UPI</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">Secure checkout</p>
+            </div>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl py-2.5 px-2">
+              <p className="text-[11px] font-semibold text-zinc-200">7-Day Return</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">Easy exchange</p>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Related Products */}
-      <div className="mt-12">
-        <RelatedProducts category={productData.category} subCategory={productData.subCategory} />
-      </div>
+      <RelatedProducts
+        category={productData.category}
+        subCategory={productData.subCategory}
+      />
     </div>
   );
 };

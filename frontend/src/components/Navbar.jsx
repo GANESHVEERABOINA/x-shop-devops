@@ -1,192 +1,272 @@
-import React, { useContext, useState } from 'react';
-import { assets } from '../assets/assets';
-import { Link, NavLink } from 'react-router-dom';
+import React, { useContext, useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 
 const Navbar = () => {
-  const [visible, setVisible] = useState(false);
-  const { setShowSearch, getCartCount, navigate, token, setToken, setCartItems, userData } = useContext(ShopContext);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef(null);
+  const location = useLocation();
+
+  const {
+    setShowSearch,
+    getCartCount,
+    navigate,
+    token,
+    setToken,
+    setCartItems,
+    userData,
+    wishlist,
+  } = useContext(ShopContext);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const logout = () => {
+    setProfileOpen(false);
     navigate('/login');
     localStorage.removeItem('token');
     setToken('');
     setCartItems({});
   };
 
-  const defaultAddress = userData?.addresses?.[0] || null;
-  const rawName = userData?.name || userData?.username || 'Ganesh';
-  const displayName = rawName.toUpperCase();
-  const userInitial = rawName.charAt(0).toUpperCase();
+  const navLinkClass = ({ isActive }) =>
+    `relative px-3.5 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 ${
+      isActive
+        ? 'text-white bg-white/[0.08] border border-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
+        : 'text-zinc-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
+    }`;
+
+  const cartCount = getCartCount();
+  const wishCount = wishlist ? wishlist.length : 0;
 
   return (
-    <div className='w-full bg-black border-b border-neutral-800 sticky top-0 z-40 backdrop-blur-xl bg-opacity-95 mb-6'>
-      
-      {/* Top Address & Plus Bar (Full Width Stretch) */}
-      {token && userData && (
-        <div className='w-full flex items-center justify-between py-2 px-4 sm:px-8 lg:px-12 bg-[#0f0f0f] border-b border-neutral-900 text-xs text-gray-300'>
-          <div
-            onClick={() => navigate('/profile')}
-            className='flex items-center gap-2 cursor-pointer hover:text-white truncate'
-          >
-            <span className='text-[#ffc200] font-extrabold flex items-center gap-1'>
-              🏠 {defaultAddress?.type || 'HOME'}
-            </span>
-            {defaultAddress ? (
-              <span className='truncate max-w-[240px] sm:max-w-md text-gray-300'>
-                {defaultAddress.street}, {defaultAddress.city}, {defaultAddress.state} - {defaultAddress.zipcode} &gt;
-              </span>
-            ) : (
-              <span className='text-gray-400 underline'>
-                + Add your delivery address for fast checkout &gt;
-              </span>
-            )}
-          </div>
-
-          <div className='hidden sm:flex items-center gap-2 bg-neutral-900 border border-neutral-800 px-3 py-1 rounded-full text-[11px] font-bold text-[#ffc200] shadow-sm'>
-            <span>⚡ X-Shop Plus Member</span>
-          </div>
-        </div>
-      )}
-
-      {/* Main Header / Navbar (Full Width Stretch) */}
-      <div className='w-full flex items-center justify-between py-4 px-4 sm:px-8 lg:px-12 font-medium text-white'>
-        
-        {/* Brand Logo */}
-        <Link to='/' className='flex items-center gap-2.5 group'>
-          <div className='bg-[#ffc200] text-black font-extrabold px-2.5 py-1 rounded-lg text-lg tracking-wider shadow group-hover:scale-105 transition'>
-            X
-          </div>
-          <span className='text-lg sm:text-xl font-extrabold tracking-widest text-white'>
-            SHOP
-          </span>
-        </Link>
-
-        {/* Modern Nav Links with Active Yellow Indicator */}
-        <ul className='hidden sm:flex gap-8 text-xs sm:text-sm font-bold tracking-wider text-gray-300'>
-          <NavLink to='/' className='flex flex-col items-center gap-1 hover:text-[#ffc200] transition'>
-            {({ isActive }) => (
-              <>
-                <p className={isActive ? 'text-[#ffc200]' : ''}>HOME</p>
-                <hr className={`w-full border-none h-[2px] bg-[#ffc200] transition-all duration-300 ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
-              </>
-            )}
-          </NavLink>
-          <NavLink to='/collection' className='flex flex-col items-center gap-1 hover:text-[#ffc200] transition'>
-            {({ isActive }) => (
-              <>
-                <p className={isActive ? 'text-[#ffc200]' : ''}>COLLECTION</p>
-                <hr className={`w-full border-none h-[2px] bg-[#ffc200] transition-all duration-300 ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
-              </>
-            )}
-          </NavLink>
-          <NavLink to='/about' className='flex flex-col items-center gap-1 hover:text-[#ffc200] transition'>
-            {({ isActive }) => (
-              <>
-                <p className={isActive ? 'text-[#ffc200]' : ''}>ABOUT</p>
-                <hr className={`w-full border-none h-[2px] bg-[#ffc200] transition-all duration-300 ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
-              </>
-            )}
-          </NavLink>
-          <NavLink to='/contact' className='flex flex-col items-center gap-1 hover:text-[#ffc200] transition'>
-            {({ isActive }) => (
-              <>
-                <p className={isActive ? 'text-[#ffc200]' : ''}>CONTACT</p>
-                <hr className={`w-full border-none h-[2px] bg-[#ffc200] transition-all duration-300 ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
-              </>
-            )}
-          </NavLink>
-        </ul>
-
-        {/* Right Icons: Search, Profile, Cart, Mobile Menu */}
-        <div className='flex items-center gap-4 sm:gap-6'>
-          <img
-            onClick={() => { setShowSearch(true); navigate('/collection') }}
-            src={assets.search_icon}
-            className='w-5 h-5 cursor-pointer invert hover:scale-110 transition'
-            alt="Search"
-            title="Search Products"
-          />
-
-          {/* Profile Dropdown / Login Button */}
-          {token ? (
-            <div className='group relative'>
-              <div className='flex items-center gap-2 cursor-pointer bg-neutral-900 border border-neutral-800 hover:border-[#ffc200] px-3.5 py-1.5 rounded-xl transition shadow'>
-                <div className='w-7 h-7 rounded-full bg-[#ffc200] text-black font-extrabold flex items-center justify-center text-xs shadow shrink-0'>
-                  {userInitial}
-                </div>
-                <span className='text-xs font-bold text-white uppercase tracking-wide hidden sm:inline'>
-                  {displayName.split(' ')[0]}
-                </span>
-                <span className='text-[10px] text-gray-400'>▼</span>
-              </div>
-
-              {/* Dropdown Menu */}
-              <div className='group-hover:block hidden absolute dropdown-menu right-0 pt-3 z-50'>
-                <div className='flex flex-col gap-2 w-48 py-3 px-4 bg-[#141414] border border-neutral-700 text-gray-300 rounded-2xl shadow-2xl text-xs font-semibold'>
-                  <p onClick={() => navigate('/profile')} className='cursor-pointer hover:text-[#ffc200] py-1.5 border-b border-neutral-800'>
-                    👤 My Profile
-                  </p>
-                  <p onClick={() => navigate('/wishlist')} className='cursor-pointer hover:text-[#ffc200] py-1.5 border-b border-neutral-800'>
-                    ❤️ My Wishlist
-                  </p>
-                  <p onClick={() => navigate('/orders')} className='cursor-pointer hover:text-[#ffc200] py-1.5 border-b border-neutral-800'>
-                    📦 My Orders
-                  </p>
-                  <p onClick={logout} className='cursor-pointer hover:text-red-400 py-1.5'>
-                    🚪 Logout
-                  </p>
-                </div>
-              </div>
+    <>
+      <header className="glass-topbar sticky top-0 z-50 w-full">
+        <div className="max-w-[1400px] mx-auto px-3.5 sm:px-6 h-14 md:h-16 flex items-center justify-between gap-2.5">
+          {/* Brand Logo */}
+          <Link to="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <div className="w-8 h-8 rounded-lg btn-violet flex items-center justify-center font-extrabold text-sm tracking-tight">
+              X
             </div>
-          ) : (
-            <button
-              onClick={() => navigate('/login')}
-              className='bg-[#ffc200] hover:bg-[#ffcf33] text-black font-extrabold text-xs px-5 py-2 rounded-xl transition shadow cursor-pointer uppercase tracking-wider'
-            >
-              Login
-            </button>
-          )}
-
-          {/* Cart Button */}
-          <Link
-            to='/cart'
-            className='relative flex items-center gap-2 px-3.5 py-2 bg-[#ffc200] hover:bg-[#ffcf33] text-black font-extrabold rounded-xl transition shadow-lg cursor-pointer'
-            title="View Shopping Cart"
-          >
-            <img src={assets.cart_icon} className='w-5 h-5 filter brightness-0' alt="Cart" />
-            <span className='text-xs hidden sm:inline'>Cart</span>
-            <span className='absolute -right-2 -top-2 w-5 h-5 flex items-center justify-center bg-black text-[#ffc200] font-extrabold rounded-full text-[10px] shadow border border-[#ffc200]'>
-              {getCartCount()}
+            <span className="text-sm sm:text-base font-bold tracking-tight text-white">
+              X-Shop
             </span>
           </Link>
 
-          {/* Mobile Menu Icon */}
-          <img
-            onClick={() => setVisible(true)}
-            src={assets.menu_icon}
-            className='w-5 h-5 cursor-pointer sm:hidden invert'
-            alt="Menu"
-          />
-        </div>
-      </div>
+          {/* Desktop & Tablet Nav */}
+          <nav className="hidden md:flex items-center gap-1 lg:gap-1.5">
+            <NavLink to="/" end className={navLinkClass}>Home</NavLink>
+            <NavLink to="/collection" className={navLinkClass}>Collection</NavLink>
+            <NavLink to="/about" className={navLinkClass}>About</NavLink>
+            <NavLink to="/contact" className={navLinkClass}>Contact</NavLink>
+          </nav>
 
-      {/* Mobile Drawer */}
-      <div className={`fixed top-0 right-0 bottom-0 overflow-hidden bg-black z-50 transition-all ${visible ? 'w-full' : 'w-0'}`}>
-        <div className='flex flex-col text-gray-300 p-6 space-y-4'>
-          <div onClick={() => setVisible(false)} className='flex items-center gap-4 cursor-pointer pb-4 border-b border-neutral-800'>
-            <img className='h-4 rotate-180 invert' src={assets.dropdown_icon} alt="" />
-            <p className='text-white font-bold'>Close Menu</p>
+          {/* Right Actions */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setShowSearch((prev) => !prev);
+                navigate('/collection');
+              }}
+              aria-label="Search products"
+              className="glass-pill w-9 h-9 rounded-xl flex items-center justify-center text-zinc-300 hover:text-white cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+              </svg>
+            </button>
+
+            <Link
+              to="/wishlist"
+              aria-label="Wishlist"
+              className="relative glass-pill w-9 h-9 rounded-xl hidden sm:flex items-center justify-center text-zinc-300 hover:text-white"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              {wishCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-500 text-white text-[9px] font-bold flex items-center justify-center">
+                  {wishCount}
+                </span>
+              )}
+            </Link>
+
+            {token ? (
+              <div ref={profileRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen((prev) => !prev)}
+                  className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs font-semibold transition cursor-pointer ${
+                    profileOpen
+                      ? 'bg-white/15 border border-violet-400/50 text-white'
+                      : 'glass-pill text-zinc-200 hover:text-white'
+                  }`}
+                >
+                  <span className="w-5 h-5 rounded-full bg-violet-500/30 border border-violet-400/50 text-violet-200 text-[10px] font-bold flex items-center justify-center uppercase">
+                    {userData?.name ? userData.name[0] : 'U'}
+                  </span>
+                  <span className="hidden sm:inline max-w-[90px] truncate">
+                    {userData?.name ? userData.name.split(' ')[0] : 'Account'}
+                  </span>
+                </button>
+
+                {profileOpen && (
+                  <div className="absolute right-0 mt-2.5 w-52 z-[100] rounded-2xl bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.95)] p-2">
+                    <div className="px-3 py-2.5 border-b border-white/10 mb-1.5">
+                      <p className="text-xs font-bold text-white truncate">
+                        {userData?.name || 'X-Shop User'}
+                      </p>
+                      {userData?.email && (
+                        <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                          {userData.email}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileOpen(false);
+                          navigate('/profile');
+                        }}
+                        className="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl text-zinc-200 hover:text-white hover:bg-white/10 transition cursor-pointer font-medium"
+                      >
+                        <span>My Profile</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileOpen(false);
+                          navigate('/orders');
+                        }}
+                        className="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl text-zinc-200 hover:text-white hover:bg-white/10 transition cursor-pointer font-medium"
+                      >
+                        <span>Orders</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileOpen(false);
+                          navigate('/wishlist');
+                        }}
+                        className="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl text-zinc-200 hover:text-white hover:bg-white/10 transition cursor-pointer font-medium"
+                      >
+                        <span>Wishlist</span>
+                      </button>
+
+                      <div className="my-1 border-t border-white/10" />
+
+                      <button
+                        type="button"
+                        onClick={logout}
+                        className="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 transition cursor-pointer font-semibold"
+                      >
+                        <span>Sign out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="btn-primary h-9 px-3.5 sm:px-4 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Sign in
+              </button>
+            )}
+
+            {/* Desktop/Tablet Cart (No "0" when empty) */}
+            <Link
+              to="/cart"
+              className="relative glass-pill h-9 px-3.5 rounded-xl hidden md:flex items-center gap-2 text-xs font-semibold text-zinc-200 hover:text-white"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              <span>Cart</span>
+              {cartCount > 0 && (
+                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-violet-500 text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
           </div>
-          <NavLink onClick={() => setVisible(false)} className='py-3 text-lg font-bold border-b border-neutral-900' to='/'>HOME</NavLink>
-          <NavLink onClick={() => setVisible(false)} className='py-3 text-lg font-bold border-b border-neutral-900' to='/collection'>COLLECTION</NavLink>
-          <NavLink onClick={() => setVisible(false)} className='py-3 text-lg font-bold border-b border-neutral-900' to='/orders'>MY ORDERS</NavLink>
-          <NavLink onClick={() => setVisible(false)} className='py-3 text-lg font-bold border-b border-neutral-900' to='/profile'>MY PROFILE</NavLink>
-          <NavLink onClick={() => setVisible(false)} className='py-3 text-lg font-bold border-b border-neutral-900' to='/about'>ABOUT</NavLink>
-          <NavLink onClick={() => setVisible(false)} className='py-3 text-lg font-bold border-b border-neutral-900' to='/contact'>CONTACT</NavLink>
         </div>
-      </div>
-    </div>
+      </header>
+
+      {/* MOBILE BOTTOM NAVIGATION BAR (< 768px) */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#050508]/92 backdrop-blur-2xl border-t border-white/10">
+        <div className="grid grid-cols-4 h-14 items-center text-[11px] font-semibold">
+          <Link
+            to="/"
+            className={`flex flex-col items-center justify-center gap-0.5 ${
+              location.pathname === '/' ? 'text-violet-400' : 'text-zinc-400'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" />
+            </svg>
+            <span>Home</span>
+          </Link>
+
+          <Link
+            to="/collection"
+            className={`flex flex-col items-center justify-center gap-0.5 ${
+              location.pathname === '/collection' ? 'text-violet-400' : 'text-zinc-400'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <span>Collection</span>
+          </Link>
+
+          <Link
+            to="/wishlist"
+            className={`relative flex flex-col items-center justify-center gap-0.5 ${
+              location.pathname === '/wishlist' ? 'text-violet-400' : 'text-zinc-400'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            <span>Wishlist</span>
+          </Link>
+
+          <Link
+            to="/cart"
+            className={`relative flex flex-col items-center justify-center gap-0.5 ${
+              location.pathname === '/cart' ? 'text-violet-400' : 'text-zinc-400'
+            }`}
+          >
+            <div className="relative">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[15px] h-[15px] px-1 rounded-full bg-violet-500 text-white text-[9px] font-bold flex items-center justify-center tabular-nums">
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            <span>Cart</span>
+          </Link>
+        </div>
+      </nav>
+    </>
   );
 };
 

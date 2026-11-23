@@ -1,4 +1,5 @@
 import userModel from "../models/userModel.js";
+import adminModel from "../models/adminModel.js";
 import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -57,12 +58,49 @@ const registerUser = async (req, res) => {
 const adminLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-            const token = jwt.sign(email + password, process.env.JWT_SECRET);
-            res.json({ success: true, token });
-        } else {
-            res.json({ success: false, message: "Invalid credentials" });
+        const cleanEmail = (email || '').trim().toLowerCase();
+        const cleanPassword = (password || '').trim();
+
+        // 1. Primary Admin check (.env)
+        if (
+            cleanEmail === (process.env.ADMIN_EMAIL || '').trim().toLowerCase() &&
+            (password === process.env.ADMIN_PASSWORD || cleanPassword === (process.env.ADMIN_PASSWORD || '').trim())
+        ) {
+            const adminInfo = {
+                name: 'Primary Admin',
+                email: process.env.ADMIN_EMAIL,
+                role: 'Primary Admin',
+                isPrimary: true
+            };
+            const token = jwt.sign(adminInfo, process.env.JWT_SECRET);
+            return res.json({ success: true, token, admin: adminInfo });
         }
+
+        // 2. Secondary Admin check (MongoDB)
+        const secondaryAdmin = await adminModel.findOne({ email: cleanEmail });
+        if (!secondaryAdmin) {
+            console.log(`[AdminLogin] No admin found for email: ${cleanEmail}`);
+            return res.json({ success: false, message: "Admin account not found for this email" });
+        }
+
+        const isMatch =
+            (await bcrypt.compare(password || '', secondaryAdmin.password)) ||
+            (await bcrypt.compare(cleanPassword, secondaryAdmin.password));
+
+        if (!isMatch) {
+            console.log(`[AdminLogin] Wrong password for secondary admin: ${cleanEmail}`);
+            return res.json({ success: false, message: "Incorrect password for this admin account" });
+        }
+
+        const adminInfo = {
+            id: secondaryAdmin._id,
+            name: secondaryAdmin.name,
+            email: secondaryAdmin.email,
+            role: secondaryAdmin.role,
+            isPrimary: false
+        };
+        const token = jwt.sign(adminInfo, process.env.JWT_SECRET);
+        return res.json({ success: true, token, admin: adminInfo });
     } catch (error) {
         console.log(error);
         res.json({ success: false, message: error.message });
@@ -116,8 +154,7 @@ const toggleWishlist = async (req, res) => {
     try {
         const { userId, itemId } = req.body;
         const user = await userModel.findById(userId);
-        
-  
+
         if (!user) {
             return res.json({ success: false, message: "User not found" });
         }
@@ -144,8 +181,7 @@ const getUserWishlist = async (req, res) => {
     try {
         const { userId } = req.body;
         const user = await userModel.findById(userId);
-        
-        // SAFE CHECK: యూజర్ లేకపోతే ఖాళీ అరే రిటర్న్ చేస్తుంది
+
         if (!user) {
             return res.json({ success: true, wishlist: [] });
         }

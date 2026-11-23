@@ -4,7 +4,6 @@ import productModel from "../models/productModel.js"
 // function for add product
 const addProduct = async (req, res) => {
     try {
-
         const { name, description, price, category, subCategory, sizes, bestseller } = req.body
 
         const image1 = req.files.image1 && req.files.image1[0]
@@ -28,12 +27,11 @@ const addProduct = async (req, res) => {
             price: Number(price),
             subCategory,
             bestseller: bestseller === "true" ? true : false,
+            soldOut: false,
             sizes: JSON.parse(sizes),
             image: imagesUrl,
             date: Date.now()
         }
-
-        console.log(productData);
 
         const product = new productModel(productData);
         await product.save()
@@ -49,10 +47,8 @@ const addProduct = async (req, res) => {
 // function for list product
 const listProducts = async (req, res) => {
     try {
-        
         const products = await productModel.find({});
-        res.json({success:true,products})
-
+        res.json({ success: true, products })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -62,10 +58,8 @@ const listProducts = async (req, res) => {
 // function for removing product
 const removeProduct = async (req, res) => {
     try {
-        
         await productModel.findByIdAndDelete(req.body.id)
-        res.json({success:true,message:"Product Removed"})
-
+        res.json({ success: true, message: "Product Removed" })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -75,31 +69,48 @@ const removeProduct = async (req, res) => {
 // function for single product info
 const singleProduct = async (req, res) => {
     try {
-        
         const { productId } = req.body
         const product = await productModel.findById(productId)
-        res.json({success:true,product})
-
+        res.json({ success: true, product })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
     }
 }
 
-// --- KOTHAGA ADD CHESINA FUNCTION (For Price Update) ---
+// Full Product Edit (Price, Sizes, Sold Out, Name, Bestseller)
 const updateProductPrice = async (req, res) => {
     try {
-        const { id, price } = req.body;
+        const { id, name, price, sizes, soldOut, bestseller, category, subCategory } = req.body;
 
-        // MongoDB lo price update chestundi
-        await productModel.findByIdAndUpdate(id, { price: Number(price) });
+        if (!id) {
+            return res.json({ success: false, message: "Product ID is required" });
+        }
 
-        res.json({ success: true, message: "Price updated successfully" });
+        const updateFields = {};
+        if (name !== undefined && name.trim() !== '') updateFields.name = name.trim();
+        if (price !== undefined && !isNaN(Number(price))) updateFields.price = Number(price);
+        if (Array.isArray(sizes)) updateFields.sizes = sizes;
+        if (typeof soldOut === 'boolean') updateFields.soldOut = soldOut;
+        if (typeof bestseller === 'boolean') updateFields.bestseller = bestseller;
+        if (category !== undefined) updateFields.category = category;
+        if (subCategory !== undefined) updateFields.subCategory = subCategory;
+
+        const updatedProduct = await productModel.findByIdAndUpdate(
+            id,
+            { $set: updateFields },
+            { new: true }
+        );
+
+        if (!updatedProduct) {
+            return res.json({ success: false, message: "Product not found" });
+        }
+
+        res.json({ success: true, message: "Product updated successfully", product: updatedProduct });
     } catch (error) {
         console.log(error);
         res.json({ success: false, message: error.message });
     }
 }
 
-// Chivarlo export lo updateProductPrice ni add chesanu chudandi
 export { listProducts, addProduct, removeProduct, singleProduct, updateProductPrice }

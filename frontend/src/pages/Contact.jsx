@@ -1,62 +1,56 @@
 import React from 'react';
-import Title from '../components/Title';
-import NewsletterBox from '../components/NewsletterBox';
+import { assets } from '../assets/assets';
 
 const Contact = () => {
   return (
-    <div className="text-white space-y-12 pt-6 pb-16 max-w-7xl mx-auto px-4 sm:px-6">
-      <div className="text-center">
-        <span className="bg-neutral-900 border border-neutral-700 text-[#ffc200] text-[11px] font-bold px-3.5 py-1 rounded-full tracking-wider uppercase">
-          📞 GET IN TOUCH
-        </span>
-        <div className="mt-2">
-          <Title text1={'CONTACT'} text2={'US'} />
-        </div>
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-8 pb-20 text-zinc-100 space-y-10">
+      <div className="border-b border-white/[0.08] pb-5">
+        <p className="text-[11px] font-semibold tracking-[0.2em] text-violet-400 uppercase mb-1">
+          Support
+        </p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          Contact Us
+        </h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-[#111111] border border-neutral-800 p-6 sm:p-10 rounded-3xl shadow-2xl">
-        <div className="md:col-span-5 relative aspect-[4/3] rounded-2xl overflow-hidden border border-neutral-700">
-          <img
-            src="https://images.unsplash.com/photo-1534536281715-e28d76689b4d?q=80&w=1000&auto=format&fit=crop"
-            alt="Contact Support"
-            className="w-full h-full object-cover hover:scale-105 transition duration-500"
-          />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        {assets.contact_img && (
+          <div className="lg:col-span-5 glass-card rounded-3xl overflow-hidden">
+            <img
+              src={assets.contact_img}
+              alt="Contact X-Shop"
+              className="w-full h-full object-cover max-h-[400px]"
+            />
+          </div>
+        )}
 
-        <div className="md:col-span-7 space-y-6">
-          <div className="bg-black/60 border border-neutral-800 p-6 rounded-2xl space-y-3">
-            <h3 className="text-sm font-extrabold text-[#ffc200] uppercase tracking-wider">
-              OUR STORE HEADQUARTERS
-            </h3>
-            <p className="text-sm text-gray-300">
-              Hitech City Road, Madhapur, Hyderabad, Telangana, India - 500081
+        <div className={`${assets.contact_img ? 'lg:col-span-7' : 'lg:col-span-12'} glass-card rounded-3xl p-6 sm:p-10 space-y-6`}>
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-violet-400 uppercase tracking-wider">
+              Headquarters
             </p>
-            <p className="text-sm text-gray-300">
-              Tel: <strong className="text-white">+91 (40) 555-0132</strong>
-            </p>
-            <p className="text-sm text-gray-300">
-              Email: <strong className="text-[#ffc200]">support@xshop.com</strong>
+            <h2 className="text-xl font-bold text-white">X-Shop Studio, Hyderabad</h2>
+            <p className="text-sm text-zinc-400">
+              HITEC City, Hyderabad, Telangana 500081, India
             </p>
           </div>
 
-          <div className="bg-black/60 border border-neutral-800 p-6 rounded-2xl space-y-3">
-            <h3 className="text-sm font-extrabold text-[#ffc200] uppercase tracking-wider">
-              CAREERS AT X-SHOP
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-400">
-              Want to build the future of cloud e-commerce with us? Explore our open engineering & DevOps roles.
-            </p>
-            <button
-              onClick={() => alert('No current openings. Send resume to hr@xshop.com')}
-              className="bg-[#ffc200] hover:bg-[#ffcf33] text-black font-extrabold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
-            >
-              Explore Careers
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/[0.08]">
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-1">
+              <p className="text-[11px] text-zinc-500 uppercase font-semibold">Phone</p>
+              <p className="text-sm font-semibold text-white">+91 (40) 555-0132</p>
+            </div>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-1">
+              <p className="text-[11px] text-zinc-500 uppercase font-semibold">Email</p>
+              <p className="text-sm font-semibold text-white">support@xshop.com</p>
+            </div>
           </div>
+
+          <p className="text-xs text-zinc-500">
+            Support hours: Monday to Saturday, 9:00 AM – 7:00 PM IST.
+          </p>
         </div>
       </div>
-
-      <NewsletterBox />
     </div>
   );
 };
