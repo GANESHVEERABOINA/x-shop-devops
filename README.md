@@ -22,6 +22,7 @@
 >   - **Configuration Management:** Automated K3s cluster bootstrap, node joins, and dynamic AWS inventory discovery via Ansible.
 >   - **Enterprise Zero-Trust Secrets Management:** Native HashiCorp Vault deployment integrated with External Secrets Operator (ESO) — permanently removing plaintext secrets from Git repositories and Helm deployment values (architected with AI acceleration).
 >   - **Shift-Left Security & Quality Gates:** Automated CI/CD scanning with SonarQube, Gitleaks, Trivy image vulnerability assessment, and real-time Slack team notifications.
+>   - **Container Optimization & Hardening:** Implemented multi-stage Docker builds, Alpine-based runtime images, non-root container execution, production dependency management, and OS security patching. Reduced backend image size by 23.3% and eliminated 100% of detected OS vulnerabilities in frontend and admin containers.
 >   - **Unified Ingress & Microservices Orchestration:** High-availability K3s orchestration with Traefik Ingress reverse proxying path-based traffic on standard HTTP Port 80 (`/`, `/admin`, `/api`).
 
 ---
@@ -109,9 +110,19 @@ flowchart LR
 | :--- | :--- | :--- |
 | **Gitleaks** | Pre-Commit / Build-Time | **DevOps:** Enforces `.gitignore` and `.gitleaksignore` patterns to prevent tokens, passwords, and private keys from ever entering Git commits or history. |
 | **SonarQube** | Code Analysis (SAST) | **Development Team:** Analyzes JavaScript, React, and Node.js code for code smells, bugs, duplicate code, and security hotspots. Dev fixes application logic; DevOps configures quality gates. |
-| **Trivy** | Vulnerability Assessment | **DevOps Team:** Scans built container images (`backend`, `frontend`, `admin`) for known CVEs, outdated base OS packages, and misconfigurations. DevOps patches base images (`bookworm-slim`, `alpine`). |
+| **Trivy** | Vulnerability Assessment | **DevOps Team:** Container image scanning and vulnerability remediation through Alpine OS package upgrades, secure base images, and non-root runtime configurations. |
 | **HashiCorp Vault + ESO** | Runtime Secrets Injection | **DevOps Team:** Centralized secrets vault outside Git. External Secrets Operator dynamically reconciles secrets into native Kubernetes secrets inside memory. |
 | **Slack Webhooks** | Pipeline Post-Actions | **DevOps Team:** Automated alerts sent to dedicated Slack channels on pipeline completion, reporting build status, commit IDs, and direct console log links. |
+
+**Trivy Vulnerability Assessment — Before and After**
+
+| Service | Before | After |
+| :--- | ---: | ---: |
+| Frontend | 16 | 0 |
+| Admin | 16 | 0 |
+| Backend | 250 OS findings | 46 Node.js findings |
+
+Frontend and admin achieved a 100% reduction in detected OS vulnerabilities. Backend dependency vulnerability remediation remains an ongoing improvement. The backend counts represent different scan categories, so a like-for-like scan is required before calculating its vulnerability reduction percentage.
 
 ---
 
@@ -165,9 +176,21 @@ Rather than opening scattered NodePorts (such as `30003`) across EC2 security gr
 | **CI/CD Automation** | Jenkins Declarative Pipeline | End-to-end automated build, test, scan, and deploy pipeline |
 | **Code Quality & Security** | SonarQube | Static Application Security Testing (SAST) & code smell detection |
 | **Vulnerability Scanning** | Trivy & Gitleaks | Container image CVE scans and repository secret scanning |
+| **Containerization** | Docker, Alpine Linux, Unprivileged NGINX, Node.js 22 | Multi-stage builds, image optimization, non-root execution, OS security patching and production runtime isolation |
 | **Secrets Management** | HashiCorp Vault + ESO | Dynamic, out-of-band secret injection without disk persistence |
 | **Collaboration & Alerting**| Slack Webhooks | Instant build/deploy notifications and error log routing |
 | **Database & Media Storage** | MongoDB Atlas & Cloudinary | Fully managed cloud NoSQL database and media asset CDN |
+
+**Container Image Optimization Results**
+
+| Service | Before (v0) | After (v0.1) | Change |
+| :--- | ---: | ---: | ---: |
+| Frontend | 129 MB | 144 MB | +11.6% |
+| Admin | 103 MB | 118 MB | +14.6% |
+| Backend | 412 MB | 316 MB | −23.3% |
+| **Total** | **644 MB** | **578 MB** | **−10.25%** |
+
+Optimized container images while prioritizing security, performance, and maintainability. Achieved a 66 MB reduction in combined reported image disk usage.
 
 ---
 
