@@ -7,6 +7,13 @@ import OrderSuccessModal from '../components/OrderSuccessModal';
 const PlaceOrder = () => {
   const [method, setMethod] = useState('cod');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+
   const {
     navigate,
     backendUrl,
@@ -38,7 +45,6 @@ const PlaceOrder = () => {
 
   const isLoggedIn = Boolean(token || localStorage.getItem('token'));
 
-  // Redirect to login immediately if user is not logged in
   useEffect(() => {
     if (!isLoggedIn) {
       toast.info('Please sign in to complete your order');
@@ -75,8 +81,54 @@ const PlaceOrder = () => {
     }
   }, [userData]);
 
-  // Do not render checkout form if not logged in
   if (!isLoggedIn) return null;
+
+  const subtotal = getCartAmount();
+  const shipping = subtotal > 0 ? delivery_fee : 0;
+  const effectiveDiscount = subtotal > 0 ? Math.min(subtotal, discountAmount) : 0;
+  const totalAmount = Math.max(0, subtotal - effectiveDiscount) + shipping;
+
+  const handleApplyCoupon = async () => {
+    const clean = couponInput.trim().toUpperCase();
+    if (!clean) {
+      toast.info('Enter a coupon code first');
+      return;
+    }
+    if (subtotal <= 0) {
+      toast.error('Your cart is empty');
+      return;
+    }
+
+    setApplyingCoupon(true);
+    try {
+      const res = await axios.post(backendUrl + '/api/coupon/validate', {
+        code: clean,
+        subtotal,
+      });
+
+      if (res.data.success) {
+        setAppliedCoupon(res.data.coupon);
+        setDiscountAmount(res.data.discountAmount);
+        setCouponInput(res.data.coupon.code);
+        toast.success(res.data.message);
+      } else {
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+        toast.error(res.data.message);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponInput('');
+    toast.info('Coupon removed');
+  };
 
   const handleSelectAddress = (addr) => {
     setSelectedAddrId(addr.id);
@@ -134,8 +186,9 @@ const PlaceOrder = () => {
       let orderData = {
         address: formData,
         items: orderItems,
-        amount: getCartAmount() + delivery_fee,
+        amount: totalAmount,
         paymentMethod: method.toUpperCase(),
+        couponCode: appliedCoupon ? appliedCoupon.code : '',
         saveNewAddress: !hasSavedAddresses,
       };
 
@@ -145,6 +198,9 @@ const PlaceOrder = () => {
         });
         if (response.data.success) {
           setCartItems({});
+          setAppliedCoupon(null);
+          setDiscountAmount(0);
+          setCouponInput('');
           if (!hasSavedAddresses) fetchUserProfile(activeToken);
           setShowSuccessModal(true);
         } else {
@@ -167,10 +223,6 @@ const PlaceOrder = () => {
       setIsSubmitting(false);
     }
   };
-
-  const subtotal = getCartAmount();
-  const shipping = subtotal > 0 ? delivery_fee : 0;
-  const totalAmount = subtotal + shipping;
 
   return (
     <form onSubmit={onSubmitHandler} className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-8 pb-24 text-zinc-100">
@@ -256,25 +308,92 @@ const PlaceOrder = () => {
           )}
         </div>
 
-        {/* RIGHT: Summary & Payment */}
+        {/* RIGHT: Summary, Coupon Code & Payment */}
         <div className="lg:col-span-5 glass-card rounded-3xl p-6 sm:p-7 space-y-6 lg:sticky lg:top-24">
           <h3 className="text-base font-semibold text-white">Order Summary</h3>
 
-          <div className="space-y-3 text-sm text-zinc-400 border-b border-white/[0.08] pb-4">
+          {/* Coupon Code Input Box */}
+          <div className="space-y-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              Promo / Coupon Code
+            </p>
+
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-emerald-500/12 border border-emerald-400/30">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-emerald-300">
+                      {appliedCoupon.code}
+                    </span>
+                    <span className="text-[11px] font-semibold text-emerald-400">
+                      Applied
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                    You saved {currency}{effectiveDiscount}.00 ({appliedCoupon.desc})
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="text-xs font-semibold text-zinc-400 hover:text-rose-400 transition cursor-pointer shrink-0"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleApplyCoupon();
+                    }
+                  }}
+                  placeholder="Enter coupon code (e.g. WELCOME15)"
+                  className="flex-1 glass-input rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-mono uppercase placeholder:font-sans placeholder:normal-case placeholder:text-zinc-500"
+                />
+                <button
+                  type="button"
+                  disabled={applyingCoupon || !couponInput.trim()}
+                  onClick={handleApplyCoupon}
+                  className="btn-violet px-4 py-2.5 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {applyingCoupon ? 'Checking...' : 'Apply'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Totals Breakdown */}
+          <div className="space-y-3 text-sm text-zinc-400 border-y border-white/[0.08] py-4">
             <div className="flex justify-between">
               <span>Subtotal</span>
               <span className="font-medium text-zinc-200 tabular-nums">{currency}{subtotal.toFixed(2)}</span>
             </div>
+
+            {effectiveDiscount > 0 && (
+              <div className="flex justify-between text-emerald-400">
+                <span>Coupon Discount ({appliedCoupon?.code})</span>
+                <span className="font-semibold tabular-nums">-{currency}{effectiveDiscount.toFixed(2)}</span>
+              </div>
+            )}
+
             <div className="flex justify-between">
               <span>Shipping</span>
               <span className="font-medium text-zinc-200 tabular-nums">{currency}{shipping.toFixed(2)}</span>
             </div>
+
             <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-white/[0.06]">
               <span>Total</span>
               <span className="text-lg tabular-nums">{currency}{totalAmount.toFixed(2)}</span>
             </div>
           </div>
 
+          {/* Payment Method */}
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
               Payment Method

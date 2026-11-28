@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import adminModel from "../models/adminModel.js";
+import expenseModel from "../models/expenseModel.js";
 import bcrypt from "bcrypt";
 import validator from "validator";
 
@@ -8,6 +10,93 @@ const ALLOWED_ROLES = ['Manager', 'Inventory Manager', 'Order Manager', 'Viewer'
 const getAdminProfile = async (req, res) => {
     try {
         res.json({ success: true, admin: req.admin });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// Live System Health (Backend + MongoDB Atlas + Memory + Uptime)
+const getSystemHealth = async (req, res) => {
+    try {
+        const dbStates = ['Disconnected', 'Connected', 'Connecting', 'Disconnecting'];
+        const readyState = mongoose.connection.readyState;
+        const dbConnected = readyState === 1;
+
+        let dbPingMs = null;
+        if (dbConnected && mongoose.connection.db) {
+            const start = Date.now();
+            await mongoose.connection.db.admin().ping();
+            dbPingMs = Date.now() - start;
+        }
+
+        res.json({
+            success: true,
+            backend: {
+                online: true,
+                uptimeSeconds: Math.floor(process.uptime()),
+                memoryMB: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+                nodeVersion: process.version
+            },
+            database: {
+                online: dbConnected,
+                state: dbStates[readyState] || 'Unknown',
+                pingMs: dbPingMs,
+                name: mongoose.connection.name || 'MongoDB Atlas'
+            },
+            adminAuth: {
+                valid: true,
+                role: req.admin?.role || 'Admin',
+                email: req.admin?.email || ''
+            },
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// Real Expenses (MongoDB)
+const listExpenses = async (_req, res) => {
+    try {
+        const expenses = await expenseModel.find({}).sort({ date: -1 });
+        res.json({ success: true, expenses });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+const addExpense = async (req, res) => {
+    try {
+        const { category, amount, note } = req.body;
+        const numAmount = Number(amount);
+        if (!category || !numAmount || numAmount <= 0) {
+            return res.json({ success: false, message: "Valid category and amount are required" });
+        }
+
+        const newExpense = new expenseModel({
+            category: category.trim(),
+            amount: numAmount,
+            note: (note || '').trim() || category.trim(),
+            addedBy: req.admin?.email || 'Admin',
+            date: Date.now()
+        });
+
+        await newExpense.save();
+        res.json({ success: true, message: "Expense saved to database", expense: newExpense });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+const deleteExpense = async (req, res) => {
+    try {
+        const { id } = req.body;
+        await expenseModel.findByIdAndDelete(id);
+        res.json({ success: true, message: "Expense removed" });
     } catch (error) {
         console.log(error);
         res.json({ success: false, message: error.message });
@@ -145,4 +234,14 @@ const removeAdmin = async (req, res) => {
     }
 };
 
-export { getAdminProfile, listAdmins, addAdmin, updateAdminRole, removeAdmin };
+export {
+    getAdminProfile,
+    getSystemHealth,
+    listExpenses,
+    addExpense,
+    deleteExpense,
+    listAdmins,
+    addAdmin,
+    updateAdminRole,
+    removeAdmin
+};

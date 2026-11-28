@@ -1,12 +1,20 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 import { backendUrl, currency } from '../App'
 import { toast } from 'react-toastify'
 
 const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const CATEGORY_PILLS = ['All', 'Men', 'Women', 'Kids', 'Topwear', 'Bottomwear', 'Winterwear'];
 
-const List = ({ token }) => {
+const List = ({ token, onDataChanged }) => {
   const [list, setList] = useState([]);
+  const [activeTab, setActiveTab] = useState('catalog');
+  const [catFilter, setCatFilter] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState('grid');
+
+  // Edit Modal State
   const [editingItem, setEditingItem] = useState(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
@@ -15,6 +23,8 @@ const List = ({ token }) => {
   const [editSoldOut, setEditSoldOut] = useState(false);
   const [editBestseller, setEditBestseller] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const navigate = useNavigate();
 
   const fetchList = async () => {
     try {
@@ -25,7 +35,6 @@ const List = ({ token }) => {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error);
       toast.error(error.message);
     }
   }
@@ -34,13 +43,13 @@ const List = ({ token }) => {
     try {
       const response = await axios.post(backendUrl + '/api/product/remove', { id }, { headers: { token } });
       if (response.data.success) {
-        toast.success("Product removed successfully!");
+        toast.success('Product removed!');
         await fetchList();
+        onDataChanged?.();
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error);
       toast.error(error.message);
     }
   }
@@ -88,9 +97,10 @@ const List = ({ token }) => {
         { headers: { token } }
       );
       if (response.data.success) {
-        toast.success("Product updated!");
+        toast.success('Product updated!');
         setEditingItem(null);
         await fetchList();
+        onDataChanged?.();
       } else {
         toast.error(response.data.message);
       }
@@ -111,6 +121,7 @@ const List = ({ token }) => {
       if (response.data.success) {
         toast.success(!item.soldOut ? 'Marked as Sold Out' : 'Restocked (In Stock)');
         await fetchList();
+        onDataChanged?.();
       } else {
         toast.error(response.data.message);
       }
@@ -123,113 +134,288 @@ const List = ({ token }) => {
     fetchList();
   }, []);
 
+  const soldOutCount = list.filter((p) => Boolean(p.soldOut)).length;
+  const bestsellerCount = list.filter((p) => Boolean(p.bestseller)).length;
+
+  const filteredList = useMemo(() => {
+    return list.filter((item) => {
+      if (activeTab === 'soldout' && !item.soldOut) return false;
+      if (activeTab === 'bestsellers' && !item.bestseller) return false;
+      if (catFilter !== 'All' && item.category !== catFilter && item.subCategory !== catFilter) return false;
+      if (searchTerm.trim() && !(item.name || '').toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      return true;
+    });
+  }, [list, activeTab, catFilter, searchTerm]);
+
   const allDisplayedSizes = Array.from(new Set([...PRESET_SIZES, ...editSizes]));
 
   return (
-    <div className='text-zinc-100 w-full space-y-5'>
-      <div className='flex items-center justify-between'>
+    <div className='w-full space-y-5'>
+      {/* Header */}
+      <div className='flex flex-col sm:flex-row sm:items-end justify-between gap-4'>
         <div>
-          <h3 className='text-2xl font-bold tracking-tight text-white'>Inventory</h3>
+          <h2 className='text-2xl sm:text-3xl font-bold tracking-tight text-white'>Products</h2>
           <p className='text-xs sm:text-sm text-zinc-400 mt-1'>
-            Edit prices, update sizes, or toggle stock status live
+            {list.length} products in catalog • Edit prices, sizes, and live stock
           </p>
         </div>
-        <span className='glass-pill px-3.5 py-1.5 rounded-full text-xs font-medium text-zinc-300 tabular-nums'>
-          {list.length} items
-        </span>
+
+        <button
+          type='button'
+          onClick={() => navigate('/add')}
+          className='btn-violet px-4 py-2.5 rounded-full text-xs font-semibold cursor-pointer self-start sm:self-auto'
+        >
+          + Add product
+        </button>
       </div>
 
-      {/* Desktop Header */}
-      <div className='hidden md:grid grid-cols-[0.8fr_2.6fr_1.1fr_0.9fr_1fr_1.5fr] items-center py-3 px-5 glass-pill rounded-xl text-[11px] font-semibold text-zinc-400 uppercase tracking-wider'>
-        <span>Product</span>
-        <span>Name & Sizes</span>
-        <span>Category</span>
-        <span>Price</span>
-        <span>Status</span>
-        <span className='text-right'>Actions</span>
+      {/* Sub-Tabs */}
+      <div className='flex items-center gap-6 border-b border-white/[0.08] text-xs font-semibold'>
+        {[
+          { key: 'catalog', label: 'Catalog', count: list.length },
+          { key: 'soldout', label: 'Sold out', count: soldOutCount },
+          { key: 'bestsellers', label: 'Bestsellers', count: bestsellerCount },
+        ].map((tab) => (
+          <button
+            type='button'
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition cursor-pointer ${
+              activeTab === tab.key
+                ? 'border-violet-500 text-white'
+                : 'border-transparent text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span>{tab.label}</span>
+            <span className='px-1.5 py-0.5 rounded-full bg-white/[0.07] text-[10px] tabular-nums'>
+              {tab.count}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {/* Rows */}
-      <div className='space-y-2.5'>
-        {list.map((item, index) => {
-          const imgUrl = Array.isArray(item.image) ? item.image[0] : item.image;
-          const isSoldOut = Boolean(item.soldOut);
+      {/* Search + Grid/List Toggle */}
+      <div className='flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3'>
+        <div className='flex-1 max-w-md flex items-center gap-2.5 glass-input rounded-full px-4 py-2.5'>
+          <svg className='w-4 h-4 text-zinc-500 shrink-0' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
+            <path strokeLinecap='round' strokeLinejoin='round' d='M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z' />
+          </svg>
+          <input
+            type='text'
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder='Search products...'
+            className='w-full bg-transparent outline-none text-xs placeholder:text-zinc-500'
+          />
+        </div>
 
-          return (
-            <div
-              key={item._id || index}
-              className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-[0.8fr_2.6fr_1.1fr_0.9fr_1fr_1.5fr] items-center gap-4 py-3.5 px-5 glass-card glass-card-hover rounded-2xl'
-            >
-              <img
-                className={`w-12 h-14 object-cover rounded-xl border border-white/10 ${isSoldOut ? 'opacity-50 grayscale' : ''}`}
-                src={imgUrl}
-                alt={item.name}
-              />
+        <div className='flex items-center gap-1 p-1 rounded-full glass-pill self-end sm:self-auto'>
+          <button
+            type='button'
+            onClick={() => setViewMode('grid')}
+            title='Grid view'
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer ${
+              viewMode === 'grid' ? 'btn-violet' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z' />
+            </svg>
+          </button>
+          <button
+            type='button'
+            onClick={() => setViewMode('list')}
+            title='List view'
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer ${
+              viewMode === 'list' ? 'btn-violet' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M4 6h16M4 12h16M4 18h16' />
+            </svg>
+          </button>
+        </div>
+      </div>
 
-              <div className='space-y-1 col-span-1 sm:col-span-2 md:col-span-1 min-w-0'>
-                <p className='font-semibold text-white text-sm truncate'>{item.name}</p>
-                <div className='flex flex-wrap items-center gap-1'>
-                  {Array.isArray(item.sizes) && item.sizes.length > 0 ? (
-                    item.sizes.map((sz) => (
+      {/* Category Pills */}
+      <div className='flex flex-wrap items-center gap-2'>
+        {CATEGORY_PILLS.map((cat) => (
+          <button
+            type='button'
+            key={cat}
+            onClick={() => setCatFilter(cat)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+              catFilter === cat ? 'btn-violet' : 'glass-pill text-zinc-400 hover:text-white'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Products Grid or List */}
+      {filteredList.length === 0 ? (
+        <div className='cirrel-panel rounded-[28px] py-16 text-center text-xs text-zinc-500'>
+          No matching products found.
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
+          {filteredList.map((item) => {
+            const imgUrl = Array.isArray(item.image) ? item.image[0] : item.image;
+            const isSoldOut = Boolean(item.soldOut);
+
+            return (
+              <div
+                key={item._id}
+                className='cirrel-panel glass-card-hover rounded-[24px] overflow-hidden flex flex-col justify-between'
+              >
+                <div className='relative aspect-[4/3] bg-zinc-950 overflow-hidden'>
+                  <img
+                    src={imgUrl}
+                    alt={item.name}
+                    className={`w-full h-full object-cover object-top ${isSoldOut ? 'opacity-50 grayscale' : ''}`}
+                  />
+                  <button
+                    type='button'
+                    onClick={() => quickToggleSoldOut(item)}
+                    className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-md border cursor-pointer flex items-center gap-1.5 ${
+                      isSoldOut
+                        ? 'bg-rose-950/80 text-rose-300 border-rose-400/40'
+                        : 'bg-black/65 text-emerald-300 border-emerald-400/35'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSoldOut ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+                    <span>{isSoldOut ? 'Sold out' : 'In stock'}</span>
+                  </button>
+
+                  {item.bestseller && (
+                    <span className='keep-white absolute top-3 right-3 px-2 py-0.5 rounded-full bg-violet-600/90 text-white text-[10px] font-bold'>
+                      Bestseller
+                    </span>
+                  )}
+                </div>
+
+                <div className='p-4 space-y-3 flex-1 flex flex-col justify-between'>
+                  <div className='space-y-1'>
+                    <p className='text-[11px] text-zinc-400'>
+                      {item.category} • {item.subCategory}
+                    </p>
+                    <h4 className='text-sm font-bold text-white line-clamp-1'>{item.name}</h4>
+                  </div>
+
+                  <div className='flex flex-wrap gap-1'>
+                    {(item.sizes || []).map((sz) => (
                       <span
                         key={sz}
-                        className='px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-[10px] font-medium text-zinc-300'
+                        className='px-1.5 py-0.5 rounded-md bg-white/[0.06] border border-white/10 text-[10px] font-medium text-zinc-300'
                       >
                         {sz}
                       </span>
-                    ))
-                  ) : (
-                    <span className='text-[10px] text-zinc-500'>No sizes</span>
-                  )}
+                    ))}
+                  </div>
+
+                  <div className='pt-2 border-t border-white/[0.08] flex items-center justify-between gap-2'>
+                    <span className='text-base font-bold text-white tabular-nums'>
+                      {currency}{item.price}
+                    </span>
+                    <div className='flex items-center gap-1.5'>
+                      <button
+                        type='button'
+                        onClick={() => openEditModal(item)}
+                        className='glass-pill hover:border-violet-400/50 px-3 py-1 rounded-full text-[11px] font-semibold text-zinc-200 hover:text-white cursor-pointer'
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => removeProduct(item._id)}
+                        className='bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer'
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className='space-y-2.5'>
+          {filteredList.map((item) => {
+            const imgUrl = Array.isArray(item.image) ? item.image[0] : item.image;
+            const isSoldOut = Boolean(item.soldOut);
 
-              <span className='w-fit px-2.5 py-1 rounded-full text-xs font-medium bg-white/[0.05] border border-white/10 text-zinc-300'>
-                {item.category}
-              </span>
+            return (
+              <div
+                key={item._id}
+                className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-[0.8fr_2.6fr_1.1fr_0.9fr_1fr_1.5fr] items-center gap-4 py-3.5 px-5 cirrel-panel glass-card-hover rounded-2xl'
+              >
+                <img
+                  className={`w-12 h-14 object-cover rounded-xl border border-white/10 ${isSoldOut ? 'opacity-50 grayscale' : ''}`}
+                  src={imgUrl}
+                  alt={item.name}
+                />
 
-              <p className='text-sm font-bold text-white tabular-nums'>{currency}{item.price}</p>
+                <div className='space-y-1 min-w-0'>
+                  <p className='font-semibold text-white text-sm truncate'>{item.name}</p>
+                  <div className='flex flex-wrap gap-1'>
+                    {(item.sizes || []).map((sz) => (
+                      <span key={sz} className='px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-[10px] text-zinc-300'>
+                        {sz}
+                      </span>
+                    ))}
+                  </div>
+                </div>
 
-              {/* Quick Sold Out Toggle */}
-              <div>
-                <button
-                  onClick={() => quickToggleSoldOut(item)}
-                  title='Click to toggle stock status'
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition cursor-pointer ${
-                    isSoldOut
-                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/25'
-                      : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25 hover:bg-emerald-500/20'
-                  }`}
-                >
-                  {isSoldOut ? 'Sold Out' : 'In Stock'}
-                </button>
+                <span className='w-fit px-2.5 py-1 rounded-full text-xs font-medium bg-white/[0.05] border border-white/10 text-zinc-300'>
+                  {item.category}
+                </span>
+
+                <p className='text-sm font-bold text-white tabular-nums'>{currency}{item.price}</p>
+
+                <div>
+                  <button
+                    type='button'
+                    onClick={() => quickToggleSoldOut(item)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition cursor-pointer ${
+                      isSoldOut
+                        ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                    }`}
+                  >
+                    {isSoldOut ? 'Sold Out' : 'In Stock'}
+                  </button>
+                </div>
+
+                <div className='flex items-center justify-end gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => openEditModal(item)}
+                    className='glass-pill px-3.5 py-1.5 rounded-full text-xs font-semibold text-zinc-200 hover:text-white cursor-pointer'
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => removeProduct(item._id)}
+                    className='bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer'
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              <div className='flex items-center justify-end gap-2 col-span-2 sm:col-span-1'>
-                <button
-                  onClick={() => openEditModal(item)}
-                  className='glass-pill hover:border-violet-400/50 text-zinc-200 hover:text-white text-xs font-semibold px-3.5 py-1.5 rounded-xl transition cursor-pointer'
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => removeProduct(item._id)}
-                  className='bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-300 text-xs font-medium px-3 py-1.5 rounded-xl transition cursor-pointer'
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Frosted Glass Edit Product Modal */}
+      {/* Full Edit Product Modal */}
       {editingItem && (
         <div className='fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4'>
           <form
             onSubmit={handleSaveEdit}
-            className='bg-[#09090d]/95 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 sm:p-7 max-w-lg w-full space-y-5 shadow-[0_30px_90px_rgba(0,0,0,0.95)]'
+            className='cirrel-panel bg-[#09090f]/95 rounded-[28px] p-6 sm:p-7 max-w-lg w-full space-y-5'
           >
             <div className='flex items-center justify-between border-b border-white/10 pb-4'>
               <div>
@@ -239,14 +425,13 @@ const List = ({ token }) => {
               <button
                 type='button'
                 onClick={() => setEditingItem(null)}
-                className='glass-pill w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white cursor-pointer'
+                className='glass-pill w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-white cursor-pointer'
               >
                 ✕
               </button>
             </div>
 
             <div className='space-y-4'>
-              {/* Name */}
               <div className='space-y-1.5'>
                 <label className='text-xs font-medium text-zinc-400 block'>Product Name</label>
                 <input
@@ -258,7 +443,6 @@ const List = ({ token }) => {
                 />
               </div>
 
-              {/* Price */}
               <div className='space-y-1.5'>
                 <label className='text-xs font-medium text-zinc-400 block'>Price ({currency})</label>
                 <input
@@ -271,10 +455,9 @@ const List = ({ token }) => {
                 />
               </div>
 
-              {/* Sizes Add / Remove */}
               <div className='space-y-2'>
                 <label className='text-xs font-medium text-zinc-400 block'>
-                  Available Sizes (Click to add or remove)
+                  Available Sizes (Click to add/remove)
                 </label>
                 <div className='flex flex-wrap gap-2'>
                   {allDisplayedSizes.map((sz) => {
@@ -285,9 +468,7 @@ const List = ({ token }) => {
                         key={sz}
                         onClick={() => toggleSize(sz)}
                         className={`min-w-[44px] h-10 px-3 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                          selected
-                            ? 'btn-primary'
-                            : 'glass-pill text-zinc-400 hover:text-white'
+                          selected ? 'btn-primary' : 'glass-pill text-zinc-400 hover:text-white'
                         }`}
                       >
                         {sz}
@@ -296,14 +477,13 @@ const List = ({ token }) => {
                   })}
                 </div>
 
-                {/* Add custom size (e.g. 28, 30, 32, Free Size) */}
                 <div className='flex gap-2 pt-1'>
                   <input
                     type='text'
                     value={customSize}
                     onChange={(e) => setCustomSize(e.target.value)}
                     placeholder='Add custom size (e.g. 32, 3XL)'
-                    className='flex-1 glass-input rounded-xl px-3 py-2 text-xs placeholder:text-zinc-600'
+                    className='flex-1 glass-input rounded-xl px-3 py-2 text-xs placeholder:text-zinc-500'
                   />
                   <button
                     type='button'
@@ -315,14 +495,13 @@ const List = ({ token }) => {
                 </div>
               </div>
 
-              {/* Toggles */}
               <div className='grid grid-cols-2 gap-3 pt-1'>
                 <button
                   type='button'
                   onClick={() => setEditSoldOut((prev) => !prev)}
-                  className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                  className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
                     editSoldOut
-                      ? 'bg-rose-500/15 border-rose-400/40 text-rose-200'
+                      ? 'bg-rose-500/15 border-rose-400/40 text-rose-300'
                       : 'bg-white/[0.03] border-white/10 text-zinc-300'
                   }`}
                 >
@@ -333,9 +512,9 @@ const List = ({ token }) => {
                 <button
                   type='button'
                   onClick={() => setEditBestseller((prev) => !prev)}
-                  className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                  className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
                     editBestseller
-                      ? 'bg-violet-500/15 border-violet-400/40 text-violet-200'
+                      ? 'bg-violet-500/15 border-violet-400/40 text-violet-300'
                       : 'bg-white/[0.03] border-white/10 text-zinc-300'
                   }`}
                 >
@@ -349,14 +528,14 @@ const List = ({ token }) => {
               <button
                 type='button'
                 onClick={() => setEditingItem(null)}
-                className='glass-pill px-4 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 cursor-pointer'
+                className='glass-pill px-4 py-2.5 rounded-full text-xs font-semibold text-zinc-300 cursor-pointer'
               >
                 Cancel
               </button>
               <button
                 type='submit'
                 disabled={saving}
-                className='btn-primary px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50'
+                className='btn-violet px-5 py-2.5 rounded-full text-xs font-semibold cursor-pointer disabled:opacity-50'
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>

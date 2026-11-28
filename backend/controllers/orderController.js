@@ -1,5 +1,6 @@
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
+import couponModel from "../models/couponModel.js";
 import Stripe from 'stripe'
 import razorpay from 'razorpay'
 
@@ -13,10 +14,28 @@ const razorpayInstance = new razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 })
 
-// Placing orders using COD / UPI Method (Blocks empty ₹10 shipping-only orders)
+// Helper: Verify coupon securely on server & return discount amount
+const applyServerCoupon = async (couponCode, subtotal) => {
+    if (!couponCode) return { discountAmount: 0, couponDoc: null };
+    const cleanCode = String(couponCode).trim().toUpperCase();
+    const couponDoc = await couponModel.findOne({ code: cleanCode });
+
+    if (!couponDoc || !couponDoc.active || couponDoc.used >= couponDoc.limit || subtotal < couponDoc.minOrderAmount) {
+        return { discountAmount: 0, couponDoc: null };
+    }
+
+    const discountAmount =
+        couponDoc.discountType === 'percent'
+            ? Math.round((subtotal * couponDoc.discountValue) / 100)
+            : Math.min(subtotal, couponDoc.discountValue);
+
+    return { discountAmount, couponDoc };
+};
+
+// Placing orders using COD / UPI Method (Applies verified coupon & blocks empty orders)
 const placeOrder = async (req, res) => {
     try {
-        const { userId, items, amount, address, paymentMethod } = req.body;
+        const { userId, items, address, paymentMethod, couponCode } = req.body;
 
         if (!Array.isArray(items) || items.length === 0) {
             return res.json({ success: false, message: "Cart is empty. Add items before placing an order." });
@@ -26,7 +45,9 @@ const placeOrder = async (req, res) => {
             (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
             0
         );
-        const finalAmount = computedSubtotal > 0 ? computedSubtotal + deliveryCharge : Number(amount || 0);
+
+        const { discountAmount, couponDoc } = await applyServerCoupon(couponCode, computedSubtotal);
+        const finalAmount = Math.max(0, computedSubtotal - discountAmount) + deliveryCharge;
 
         const orderData = {
             userId,
@@ -41,13 +62,20 @@ const placeOrder = async (req, res) => {
                 {
                     status: 'Order Placed',
                     date: Date.now(),
-                    note: 'Order confirmed and received by X-Shop warehouse.'
+                    note: couponDoc
+                        ? `Order confirmed with coupon ${couponDoc.code} (-₹${discountAmount}).`
+                        : 'Order confirmed and received by X-Shop warehouse.'
                 }
             ]
         }
 
         const newOrder = new orderModel(orderData)
         await newOrder.save()
+
+        // Increment coupon redemption count in MongoDB
+        if (couponDoc) {
+            await couponModel.findByIdAndUpdate(couponDoc._id, { $inc: { used: 1 } });
+        }
 
         // Clear user cart & auto-save address if user has no saved addresses
         const user = await userModel.findById(userId);
@@ -66,36 +94,61 @@ const placeOrder = async (req, res) => {
     }
 }
 
-// Placing orders using Stripe Method
+// Placing orders using Stripe Method (With Coupon Discount Support)
 const placeOrderStripe = async (req, res) => {
     try {
-        const { userId, items, amount, address } = req.body
+        const { userId, items, address, couponCode } = req.body
         const { origin } = req.headers;
 
         if (!Array.isArray(items) || items.length === 0) {
             return res.json({ success: false, message: "Cart is empty. Add items before placing an order." });
         }
 
+        const computedSubtotal = items.reduce(
+            (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+            0
+        );
+        const { discountAmount, couponDoc } = await applyServerCoupon(couponCode, computedSubtotal);
+        const discountedSubtotal = Math.max(0, computedSubtotal - discountAmount);
+        const finalAmount = discountedSubtotal + deliveryCharge;
+
         const orderData = {
             userId,
             items,
             address,
-            amount,
+            amount: finalAmount,
             paymentMethod: "Stripe",
             payment: false,
             date: Date.now(),
             status: 'Order Placed',
-            statusHistory: [{ status: 'Order Placed', date: Date.now(), note: 'Order initiated via Stripe.' }]
+            statusHistory: [
+                {
+                    status: 'Order Placed',
+                    date: Date.now(),
+                    note: couponDoc
+                        ? `Order initiated via Stripe with coupon ${couponDoc.code} (-₹${discountAmount}).`
+                        : 'Order initiated via Stripe.'
+                }
+            ]
         }
 
         const newOrder = new orderModel(orderData)
         await newOrder.save()
 
+        if (couponDoc) {
+            await couponModel.findByIdAndUpdate(couponDoc._id, { $inc: { used: 1 } });
+        }
+
+        // Adjust unit prices proportionally if coupon discount is active
+        const ratio = computedSubtotal > 0 ? discountedSubtotal / computedSubtotal : 1;
+
         const line_items = items.map((item) => ({
             price_data: {
                 currency: currency,
-                product_data: { name: item.name },
-                unit_amount: item.price * 100
+                product_data: {
+                    name: couponDoc ? `${item.name} (${couponDoc.code} applied)` : item.name
+                },
+                unit_amount: Math.max(100, Math.round(Number(item.price) * ratio * 100))
             },
             quantity: item.quantity
         }))
@@ -142,17 +195,24 @@ const verifyStripe = async (req, res) => {
 
 const placeOrderRazorpay = async (req, res) => {
     try {
-        const { userId, items, amount, address } = req.body
+        const { userId, items, address, couponCode } = req.body
 
         if (!Array.isArray(items) || items.length === 0) {
             return res.json({ success: false, message: "Cart is empty. Add items before placing an order." });
         }
 
+        const computedSubtotal = items.reduce(
+            (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+            0
+        );
+        const { discountAmount, couponDoc } = await applyServerCoupon(couponCode, computedSubtotal);
+        const finalAmount = Math.max(0, computedSubtotal - discountAmount) + deliveryCharge;
+
         const orderData = {
             userId,
             items,
             address,
-            amount,
+            amount: finalAmount,
             paymentMethod: "Razorpay",
             payment: false,
             date: Date.now(),
@@ -163,8 +223,12 @@ const placeOrderRazorpay = async (req, res) => {
         const newOrder = new orderModel(orderData)
         await newOrder.save()
 
+        if (couponDoc) {
+            await couponModel.findByIdAndUpdate(couponDoc._id, { $inc: { used: 1 } });
+        }
+
         const options = {
-            amount: amount * 100,
+            amount: finalAmount * 100,
             currency: currency.toUpperCase(),
             receipt: newOrder._id.toString()
         }

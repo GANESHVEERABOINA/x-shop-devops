@@ -50,14 +50,21 @@ const Navbar = () => {
     <>
       <header className="glass-topbar sticky top-0 z-50 w-full">
         <div className="max-w-[1400px] mx-auto px-3.5 sm:px-6 h-14 md:h-16 flex items-center justify-between gap-2.5">
-          {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-lg btn-violet flex items-center justify-center font-extrabold text-sm tracking-tight">
-              X
+          {/* Luxury Brand Wordmark */}
+          <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl btn-violet flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4 md:w-[18px] md:h-[18px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5l14 14M19 5L5 19" />
+              </svg>
             </div>
-            <span className="text-sm sm:text-base font-bold tracking-tight text-white">
-              X-Shop
-            </span>
+            <div className="leading-none">
+              <span className="block text-base md:text-lg font-extrabold tracking-[0.2em] text-white uppercase">
+                X<span className="text-violet-400">·</span>SHOP
+              </span>
+              <span className="hidden sm:block text-[8px] font-bold tracking-[0.34em] text-zinc-500 uppercase mt-0.5 group-hover:text-violet-300 transition">
+                ATELIER
+              </span>
+            </div>
           </Link>
 
           {/* Desktop & Tablet Nav */}
@@ -188,7 +195,6 @@ const Navbar = () => {
               </button>
             )}
 
-            {/* Desktop/Tablet Cart (No "0" when empty) */}
             <Link
               to="/cart"
               className="relative glass-pill h-9 px-3.5 rounded-xl hidden md:flex items-center gap-2 text-xs font-semibold text-zinc-200 hover:text-white"

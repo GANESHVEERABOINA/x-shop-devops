@@ -1,9 +1,16 @@
-FROM node:22-bookworm-slim
+
+FROM node:22-alpine AS build
 WORKDIR /app
-ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
-COPY --chown=node:node . .
-USER node
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+USER root
+RUN apk update && apk upgrade --no-cache
+ENV NODE_ENV=production
+COPY --from=build --chown=101:101 /app/node_modules ./node_modules
+COPY --chown=101:101 . .
+USER 101:101
 EXPOSE 4000
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
